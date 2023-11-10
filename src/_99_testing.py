@@ -62,6 +62,12 @@ autograd.gradcheck(ELBO_MC, (m, u, dat["y"], dat["X"], mu, sig))
 X = dat["X"]
 y = dat["y"]
 
+
+def KL(m, s, mu, sig):
+    res = torch.log(sig / s) + 0.5 * ((s ** 2 + (m - mu) ** 2) / sig ** 2 - 1)
+    return torch.sum(res)
+
+
 def ELL_MC(m, s, y, X):
     """
     Compute the expected negative log-likelihood with monte carlo
@@ -72,28 +78,50 @@ def ELL_MC(m, s, y, X):
 
     with torch.no_grad():    
         norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
-        samp = norm.sample((1, ))
+        samp = norm.sample((1000, ))
         
     samp = M + S * samp
 
     res =  torch.dot(1 - y, M) + \
-        torch.sum(torch.mean(torch.log1p(torch.exp(-samp)), 1))
+        torch.sum(torch.mean(torch.log1p(torch.exp(-samp)), 0))
 
     return res
+
+def ELBO_MC(m, u, y, X, mu, sig):
+    s = torch.exp(u)
+    return ELL_MC(m, s, y, X) + KL(m, s, mu, sig)
+
 
 
 m = torch.randn(4, requires_grad=True, dtype=torch.double)
 u = torch.ones(4, requires_grad=True, dtype=torch.double)
-t = torch.ones(250, dtype=torch.double, requires_grad=True)
+s = torch.exp(u)
 mu = torch.zeros(4, dtype=torch.double)
-Sig = torch.eye(4, dtype=torch.double)
 sig = torch.ones(4, dtype=torch.double) * 4
 
-ELBO_Jak_mvn(m, u, t, dat["y"], dat["X"], mu, Sig)
+optimizer = torch.optim.SGD([m, u], lr=0.01)
+loss = []
+
+# training loop
+for epoch in range(1000):
+    optimizer.zero_grad()
+    l = ELBO_MC(m, u, dat["y"], dat["X"], mu, sig)
+    loss.append(l.item())
+    l.backward()
+    optimizer.step()
+
+    if epoch % 20 == 0:
+        print(epoch, l.item())
+
+m
+torch.exp(u)
+dat["b"]
+torch.mean((m - dat["b"])**2)
+
+from _02_method import LogisticVI, LogisticMCMC
 
 
-
-# jaakkola analytical solutions
+torch.mean((f0.m- dat["b"])**2)
 
 
 torch.manual_seed(1)
@@ -187,3 +215,23 @@ p = Sig.size()[0]
 L = torch.zeros(p, p, dtype=torch.double)
 L[torch.tril_indices(p, p, 0).tolist()] = u
 S = L @ L.t()
+
+
+
+def f(m, s):
+    samp = torch.randn(500, )
+    x = samp * s + m
+    return torch.mean(torch.log1p(torch.exp(-x)))
+
+
+m = torch.ones(1, requires_grad=True, dtype=torch.double)
+s = torch.ones(1, requires_grad=True, dtype=torch.double) 
+
+o = f(m, s)
+o.backward()
+
+m.grad
+s.grad
+
+torch.autograd.gradcheck(f, (m, s))
+

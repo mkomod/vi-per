@@ -111,25 +111,45 @@ def ELL_TB_mvn(m, S, y, X, l_max = 10.0):
     return res
 
 
-def ELL_MC(m, s, y, X):
+def ELL_MC(m, s, y, X, n_samples=1000):
     """
     Compute the expected negative log-likelihood with monte carlo
     :return: ELL
     """
     M = X @ m
     S = torch.sqrt(X ** 2 @ s ** 2)
-        
-    norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
-    samp = norm.sample((1000, ))
-    samp = M.unsqueeze(1) + S.unsqueeze(1) * samp
 
-    torch.sum(torch.log1p(torch.exp(-samp)), 1).size()
+    with torch.no_grad():    
+        norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+        samp = norm.sample((n_samples, ))
+        
+    samp = M + S * samp
 
     res =  torch.dot(1 - y, M) + \
-        torch.mean(torch.sum(torch.log1p(torch.exp(-samp)), 1))
+        torch.sum(torch.mean(torch.log1p(torch.exp(-samp)), 0))
 
     return res
 
+
+def ELL_MC_mvn(m, S, y, X, n_samples=1000):
+    """
+    Compute the expected negative log-likelihood with monte carlo
+    :return: ELL
+    """
+    M = X @ m
+    S = torch.diag(X @ S @ X.t())
+
+    with torch.no_grad():    
+        norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+        samp = norm.sample((n_samples, ))
+        
+    samp = M + S * samp
+
+    res =  torch.dot(1 - y, M) + \
+        torch.sum(torch.mean(torch.log1p(torch.exp(-samp)), 0))
+
+    return res
+ 
 
 def ELL_Jak(m, s, t, y, X):
     """
@@ -193,13 +213,26 @@ def ELBO_TB_mvn(m, u, y, X, mu, Sig, l_max = 10.0, cov = None):
     return ELL_TB_mvn(m, S, y, X, l_max=l_max) + KL_mvn(m, S, mu, Sig)
 
 
-def ELBO_MC(m, u, y, X, mu, sig):
+def ELBO_MC(m, u, y, X, mu, sig, n_samples=1000):
     """
     Compute the negative of the ELBO
     :return: ELBO
     """
     s = torch.exp(u)
-    return ELL_MC(m, s, y, X) + KL(m, s, mu, sig)
+    return ELL_MC(m, s, y, X, n_samples) + KL(m, s, mu, sig)
+
+
+def ELBO_MC_mvn(m, u, y, X, mu, Sig, n_samples=1000):
+    """
+    Compute the negative of the ELBO
+    :return: ELBO
+    """
+    p = Sig.size()[0]
+    L = torch.zeros(p, p, dtype=torch.double)
+    L[torch.tril_indices(p, p, 0).tolist()] = u
+    S = L.t() @ L
+
+    return ELL_MC_mvn(m, S, y, X, n_samples) + KL_mvn(m, S, mu, Sig)
 
 
 def ELBO_Jak(m, u, t, y, X, mu, sig):
@@ -232,7 +265,7 @@ class LogisticVI:
     def __init__(self, dat, intercept=True, method=0, 
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
         l_max=10.0, n_iter=500, thresh=1e-4, verbose=False, 
-        time=True, seed=1):
+        n_samples=1000, time=True, seed=1):
         """ 
         Initialize the class
         :param dat: data
@@ -244,16 +277,18 @@ class LogisticVI:
         :param seed: seed for reproducibility
         """
         torch.manual_seed(seed)
-        self.seed=seed
-        self.y = dat["y"]
+
         self.X = dat["X"]
         self.intercept = intercept
         self.l_max = l_max
-        self.verbose = verbose
-        self.time = time
-        self.runtime = 0
         self.n_iter = n_iter
+        self.n_samples = n_samples
+        self.runtime = 0
+        self.seed = seed
         self.thresh = thresh
+        self.time = time
+        self.verbose = verbose
+        self.y = dat["y"]
 
         if intercept:
             self.X = torch.cat((torch.ones(self.X.size()[0], 1), self.X), 1)
@@ -320,6 +355,22 @@ class LogisticVI:
                 print("Fitting with Jaakkola and Jordan bound, full covariance variational family")
             self._fit_Jak_mvn()
             self.s = self.S
+        elif self.method == 4:
+            if self.verbose:
+                print("Fitting with Monte Carlo, diagonal covariance variational family")
+            self._fit_MC()
+            self.s = torch.exp(self.u)
+        elif self.method == 5:
+            if self.verbose:
+                print("Fitting with Monte Carlo, full covariance variational family")
+            self.u = torch.ones(int(self.p * (1 + self.p) / 2.0), dtype=torch.double)
+            self.u = self.u * 1/self.p
+            self.u.requires_grad = True
+            self._fit_MC_mvn()
+            L = torch.zeros_like(self.Sig)
+            L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
+            self.s = L.t() @ L
+            self.S = self.s
         else:
             raise ValueError("Method not recognized")
 
@@ -386,10 +437,8 @@ class LogisticVI:
 
         for epoch in range(self.n_iter):
             a_t = (torch.sigmoid(self.t) - 0.5) / self.t
-            # self.m = self.s**2 * (self.mu / self.sig**2 + self.X.t() @ (self.y - 0.5))
             self.m = torch.inverse(self.X.t() @ torch.diag(a_t) @ self.X + torch.diag(1/self.sig**2)) @ (self.mu / self.sig**2 + self.X.t() @ (self.y - 0.5))
             self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + self.X.t() @ torch.diag(a_t) @ self.X)))
-            # self.s = torch.sqrt(1 / (1/self.sig**2 + torch.diag(self.X.t() @ torch.diag(a_t) @ self.X)))
             self.t = torch.sqrt(torch.diag(self.X @ (torch.diag(self.s**2) + torch.outer(self.m, self.m)) @ self.X.t()))
             
             l = ELL_Jak(self.m, self.s, self.t, self.y, self.X) + KL(self.m, self.s, self.mu, self.sig)
@@ -400,23 +449,6 @@ class LogisticVI:
             
             if epoch % 20 == 0 and self.verbose:
                 print(epoch, l.item())
-
-        # optimizer for Jaakola bound
-        # optimizer = torch.optim.SGD([self.m, self.u, self.t], lr=0.01, momentum=0.9)
-
-        # for epoch in range(self.n_iter):
-        #     optimizer.zero_grad()
-        #     l = ELBO_Jak(self.m, self.u, self.t, self.y, self.X, self.mu, self.sig)
-        #     self.loss.append(l.item())
-
-        #     if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
-        #         break
-
-        #     l.backward()
-        #     optimizer.step()
-
-        #     if epoch % 20 == 0 and self.verbose:
-        #         print(epoch, l.item())
 
 
     def _fit_Jak_mvn(self):
@@ -443,21 +475,50 @@ class LogisticVI:
             if epoch % 20 == 0 and self.verbose:
                 print(epoch, l.item())
 
-        # optimizer = torch.optim.SGD([self.m, self.u, self.t], lr=0.01, momentum=0.9)
 
-        # for epoch in range(self.n_iter):
-        #     optimizer.zero_grad()
-        #     l = ELBO_Jak_mvn(self.m, self.u, self.t, self.y, self.X, self.mu, self.sig)
-        #     self.loss.append(l.item())
+    def _fit_MC(self):
+        """
+        Fit the model using monte carlo
+        """
+        optimizer = torch.optim.SGD([self.m, self.u], lr=0.01, momentum=0.9)
 
-        #     if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
-        #         break
+        # training loop
+        for epoch in range(self.n_iter):
+            optimizer.zero_grad()
+            l = ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
+            self.loss.append(l.item())
 
-        #     l.backward()
-        #     optimizer.step()
+            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
+                break
 
-        #     if epoch % 20 == 0 and self.verbose:
-        #         print(epoch, l.item())
+            l.backward()
+            optimizer.step()
+
+            if epoch % 20 == 0 and self.verbose:
+                print(epoch, l.item())
+    
+
+    def _fit_MC_mvn(self):
+        """
+        Fit the model using monte carlo
+        """
+        optimizer = torch.optim.Adam([self.m, self.u], lr=0.04)
+        
+        # training loop
+        for epoch in range(self.n_iter):
+            optimizer.zero_grad()
+            l = ELBO_MC_mvn(self.m, self.u, self.y, self.X, 
+                self.mu, self.Sig, self.n_samples)
+            self.loss.append(l.item())
+            
+            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
+                break
+
+            l.backward()
+            optimizer.step()
+
+            if epoch % 20 == 0 and self.verbose:
+                print(epoch, l.item())
 
 
     def predict(self, X):
@@ -486,7 +547,12 @@ class LogisticVI:
             return ELBO_Jak(self.m, self.u, self.t, y, X, self.mu, self.sig)
         elif self.method == 3:
             return ELBO_Jak_mvn(self.m, self.u, self.t, y, X, self.mu, self.Sig)
-            
+        elif self.method == 4:
+            return ELBO_MC(self.m, self.u, y, X, self.mu, self.sig, self.n_samples)
+        elif self.method == 5:
+            return ELBO_MC_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.n_samples)
+        else:
+            raise ValueError("Method not recognized")
 
 
     def sample(self, n_samples=10000):
