@@ -18,7 +18,7 @@ DGP = args.dgp
 N = [250, 500, 1000][args.n]
 P = [10, 20, 50][args.p]
 RUNS = args.runs
-RUNS=4
+
 
 def run_experiment(seed):
     print(f"Experiment {seed}")
