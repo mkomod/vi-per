@@ -28,15 +28,17 @@ def run_experiment(seed):
     f1 = LogisticVI(dat, method=1, intercept=False, n_iter=1000)
     f2 = LogisticVI(dat, method=2, intercept=False, n_iter=1000)
     f3 = LogisticVI(dat, method=3, intercept=False, n_iter=1000)
-    f4 = LogisticMCMC(dat, intercept=False, n_iter=10000, burnin=5000, k=12)
+    f4 = LogisticVI(dat, method=4, intercept=False, n_iter=1000)
+    f5 = LogisticMCMC(dat, intercept=False, n_iter=10000, burnin=5000, k=12)
 
-    f0.fit(); f1.fit(); f2.fit(); f3.fit(); f4.fit()
+    f0.fit(); f1.fit(); f2.fit(); f3.fit(); f4.fit(); f5.fit()
 
     return torch.tensor([evaluate_method(f0, dat),
                          evaluate_method(f1, dat),
                          evaluate_method(f2, dat), 
                          evaluate_method(f3, dat),
-                         evaluate_method(f4, dat, method="mcmc")])
+                         evaluate_method(f4, dat),
+                         evaluate_method(f5, dat, method="mcmc")])
 
 
 res = Parallel(n_jobs=-2)(delayed(run_experiment)(i) for i in range(1, RUNS+1))
