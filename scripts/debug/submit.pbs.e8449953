@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/rds/general/user/mk1019/home/logistic_vb_src/src/_03_simulations.py", line 3, in <module>
+    from _00_funcs import evaluate_method
+  File "/rds/general/user/mk1019/home/logistic_vb_src/src/_00_funcs.py", line 3, in <module>
+    from torcheval import metrics as tm
+ModuleNotFoundError: No module named 'torcheval'

@@ -1,0 +1,17 @@
+#PBS -lwalltime=00:30:00
+#PBS -lselect=1:ncpus=8:mem=96gb
+
+module load anaconda3/personal
+source activate Renv
+
+PROJ_DIR=$HOME/p3
+
+export CORES=8
+export DGP=1
+export SIM=1
+
+cd $PROJ_DIR/scripts/debug
+lscpu >> out
+# Rscript 01-simulations.R > \
+#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+
