@@ -39,7 +39,7 @@ def run_experiment(seed):
                          evaluate_method(f4, dat, method="mcmc")])
 
 
-res = Parallel(n_jobs=-1)(delayed(run_experiment)(i) for i in range(1, RUNS+1))
+res = Parallel(n_jobs=-2)(delayed(run_experiment)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
 res = torch.transpose(res, 0, 1)
 
