@@ -124,7 +124,6 @@ from _02_method import LogisticVI, LogisticMCMC
 torch.mean((f0.m- dat["b"])**2)
 
 
-
 torch.manual_seed(1)
 dat = generate_data(250, 4)
 
