@@ -111,7 +111,6 @@ def ELL_TB_mvn(m, S, y, X, l_max = 10.0):
     return res
 
 
-
 def ELL_MC(m, s, y, X):
     """
     Compute the expected negative log-likelihood with monte carlo
@@ -120,8 +119,9 @@ def ELL_MC(m, s, y, X):
     M = X @ m
     S = torch.sqrt(X ** 2 @ s ** 2)
         
-    mvn = dist.Normal(M, S)
-    samp = mvn.sample((1000, ))
+    norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+    samp = norm.sample((1000, ))
+    samp = M.unsqueeze(1) + S.unsqueeze(1) * samp
 
     torch.sum(torch.log1p(torch.exp(-samp)), 1).size()
 
@@ -199,7 +199,7 @@ def ELBO_MC(m, u, y, X, mu, sig):
     :return: ELBO
     """
     s = torch.exp(u)
-    return ELL_MC(m, s, y, X) + KL_MC(m, s, mu, sig)
+    return ELL_MC(m, s, y, X) + KL(m, s, mu, sig)
 
 
 def ELBO_Jak(m, u, t, y, X, mu, sig):
