@@ -1,5 +1,5 @@
-#PBS -lwalltime=8:00:00
-#PBS -lselect=1:ncpus=100:mem=512gb
+#PBS -lwalltime=00:15:00
+#PBS -lselect=1:ncpus=100:mem=128gb
 
 module load anaconda3/personal
 source activate env
@@ -9,3 +9,4 @@ PROJ_DIR=$HOME/logistic_vb_src
 cd $PROJ_DIR/src
 
 python _03_simulations.py --dgp $dgp --n $N --p $P
+
