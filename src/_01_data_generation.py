@@ -21,7 +21,7 @@ def generate_data(n, p, b = torch.tensor([1., 0.5, -1., -0.5],
         S = torch.zeros(p, p, dtype=torch.double)
         for i in range(p):
             for j in range(p):
-                S[i, j] = 0.6 ** torch.abs(torch.tensor(i - j, dtype=torch.double))
+                S[i, j] = 0.3 ** torch.abs(torch.tensor(i - j, dtype=torch.double))
         mvn = dist.MultivariateNormal(torch.zeros(p, dtype=torch.double), S)
         X = mvn.sample((n,))
     elif dgp == 2:
@@ -29,7 +29,7 @@ def generate_data(n, p, b = torch.tensor([1., 0.5, -1., -0.5],
         # S = torch.matmul(U, U.t())
 
         # generate a cov matrix
-        df = p * (p + 1) / 2
+        df = p + 5
         wishart = dist.Wishart(df, covariance_matrix=torch.eye(p))
         S = wishart.sample((1,)).squeeze() / df
         S = S.type(torch.double)
