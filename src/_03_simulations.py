@@ -24,12 +24,12 @@ def run_experiment(seed):
     print(f"Experiment {seed}")
     dat = generate_data(N, P, seed=seed, dgp=DGP)
     
-    f0 = LogisticVI(dat, method=0, intercept=False, n_iter=1000)
-    f1 = LogisticVI(dat, method=1, intercept=False, n_iter=1000)
-    f2 = LogisticVI(dat, method=2, intercept=False, n_iter=1000)
-    f3 = LogisticVI(dat, method=3, intercept=False, n_iter=1000)
-    f4 = LogisticVI(dat, method=4, intercept=False, n_iter=1000, n_samples=250)
-    f5 = LogisticVI(dat, method=5, intercept=False, n_iter=1000, n_samples=250)
+    f0 = LogisticVI(dat, method=0, intercept=False)
+    f1 = LogisticVI(dat, method=1, intercept=False) 
+    f2 = LogisticVI(dat, method=2, intercept=False) 
+    f3 = LogisticVI(dat, method=3, intercept=False) 
+    f4 = LogisticVI(dat, method=4, intercept=False) 
+    f5 = LogisticVI(dat, method=5, intercept=False) 
     f6 = LogisticMCMC(dat, intercept=False, n_iter=10000, burnin=5000, k=10)
 
     f0.fit(); f1.fit(); f2.fit(); f3.fit(); f4.fit(); f5.fit(); f6.fit()
