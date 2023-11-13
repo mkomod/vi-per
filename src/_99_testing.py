@@ -161,9 +161,9 @@ for epoch in range(500):
 
 # test other formulation of cov matrix
 p = 5
-dat = generate_data(30000, p)
+dat = generate_data(300, p)
 
-f = LogisticVI(dat, intercept=False, method=0, seed=0, adaptive_l=True,
+f = LogisticVI(dat, intercept=False, method=1, seed=0, adaptive_l=True,
     n_iter=5000, verbose=True, thresh=1e-8, l_thresh=1e-2)
 f.fit()
 f.s
@@ -237,4 +237,38 @@ m.grad
 s.grad
 
 torch.autograd.gradcheck(f, (m, s))
+
+
+# fast computation of diag(X S X^T)
+S = f.s
+
+import time
+
+
+# this is faster
+
+p = 10
+dat = generate_data(20000, p)
+X = dat["X"]
+
+U = torch.randn(p, p, dtype=torch.double)
+S = U @ U.t()
+
+s0 = torch.diag(X @ S @ X.t())
+
+U = torch.linalg.cholesky(S)
+s1 = torch.sum((X @ U) ** 2, dim=1)
+
+s2 = torch.sum(X * (S @ X.t()).t(), dim=1)
+
+s = time.time()
+for i in range(1000):
+    s0 = torch.diag(X @ S @ X.t())
+
+    U = torch.linalg.cholesky(S)
+    s1 = torch.sum((X @ U) ** 2, dim=1)
+
+    # s2 = torch.sum(X * (S @ X.t()).t(), dim=1)
+e = time.time()
+e - s
 

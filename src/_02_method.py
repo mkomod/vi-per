@@ -88,7 +88,13 @@ def ELL_TB_mvn(m, S, y, X, l_max = 10.0):
     :return: ELL
     """
     M = X @ m
-    S = torch.diag(X @ S @ X.t())
+    # S = torch.diag(X @ S @ X.t()) # this is too slow!
+    
+    U = torch.linalg.cholesky(S)
+    S = torch.sum((X @ U) ** 2, dim=1)
+
+    # S = torch.sum(X * (S @ X.t()).t(), dim=1)
+
     l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
 
     M = M.unsqueeze(1)
@@ -138,6 +144,11 @@ def ELL_MC_mvn(m, S, y, X, n_samples=1000):
     """
     M = X @ m
     S = torch.diag(X @ S @ X.t())
+    
+    U = torch.linalg.cholesky(S)
+    S = torch.sum((X @ U) ** 2, dim=1)
+
+    # S = torch.sum(X * (S @ X.t()).t(), dim=1)
 
     with torch.no_grad():    
         norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
