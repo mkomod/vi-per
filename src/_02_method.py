@@ -176,13 +176,11 @@ def ELL_Jak_mvn(m, S, t, y, X):
     """
     M = X @ m
     a_t = (torch.sigmoid(t) - 0.5) / t
-    # B = torch.trace((X.t() @ torch.diag(a_t) @ X) @ (S + torch.outer(m, m)))
     B = a_t * torch.diag(X @ (S + torch.outer(m, m)) @ X.t())
 
     res = - torch.dot(y, M) - torch.sum(logsigmoid(t)) + \
         0.5 * torch.sum(M + t) + 0.5 * torch.sum(B)   - \
         0.5 * torch.sum(a_t * t ** 2)
-        # 0.5 * torch.sum(M + t) + 0.5 * B   - \
 
     return res
 
@@ -196,7 +194,7 @@ def ELBO_TB(m, u, y, X, mu, sig, l_max = 10.0):
     return ELL_TB(m, s, y, X, l_max=l_max) + KL(m, s, mu, sig)
 
 
-def ELBO_TB_mvn(m, u, y, X, mu, Sig, l_max = 10.0, cov = None):
+def ELBO_TB_mvn(m, u, y, X, mu, Sig, l_max = 10.0):
     """
     Compute the negative of the ELBO
     :return: ELBO
@@ -264,8 +262,8 @@ def ELBO_Jak_mvn(m, u, t, y, X, mu, Sig, cov=None):
 class LogisticVI:
     def __init__(self, dat, intercept=True, method=0, 
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
-        l_max=10.0, n_iter=500, thresh=1e-4, verbose=False, 
-        n_samples=1000, time=True, seed=1):
+        adaptive_l=True, l_thresh=1e-3, l_max=10.0, n_iter=500, 
+        thresh=1e-6, verbose=False, n_samples=1000, time=True, seed=1):
         """ 
         Initialize the class
         :param dat: data
@@ -288,7 +286,14 @@ class LogisticVI:
         self.thresh = thresh
         self.time = time
         self.verbose = verbose
+        self.adaptive_l = adaptive_l
+        self.l_thresh = l_thresh
         self.y = dat["y"]
+
+        if adaptive_l:
+            self.l_terms = float(int(l_max / 2))
+        else:
+            self.l_terms = l_max
 
         if intercept:
             self.X = torch.cat((torch.ones(self.X.size()[0], 1), self.X), 1)
@@ -328,107 +333,138 @@ class LogisticVI:
         self.u.requires_grad = True
         self.loss = []
 
+        optimizer = torch.optim.Adam([self.m, self.u], lr=0.01)
 
         if self.method == 0:
             if self.verbose:
                 print("Fitting with proposed bound, diagonal covariance variational family")
-            self._fit_TB()
+
+            self._trainig_loop(optimizer)
             self.s = torch.exp(self.u)
+
         elif self.method == 1:
             if self.verbose:
                 print("Fitting with proposed bound, full covariance variational family")
+
             self.u = torch.ones(int(self.p * (1 + self.p) / 2.0), dtype=torch.double)
             self.u = self.u * 1/self.p
             self.u.requires_grad = True
-            self._fit_TB_mvn()
-            # self.s = torch.inverse(torch.cov(self.X.t()) + torch.diag(torch.exp(self.u)))
+
+            optimizer = torch.optim.Adam([self.m, self.u], lr=0.01)
+            self._trainig_loop(optimizer)
+
             L = torch.zeros_like(self.Sig)
             L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
             self.s = L.t() @ L
             self.S = self.s
+
         elif self.method == 2:
             if self.verbose:
                 print("Fitting with Jaakkola and Jordan bound, diagonal covariance variational family")
+
             self._fit_Jak()
+
         elif self.method == 3:
             if self.verbose:
                 print("Fitting with Jaakkola and Jordan bound, full covariance variational family")
+
             self._fit_Jak_mvn()
+
             self.s = self.S
+
         elif self.method == 4:
             if self.verbose:
                 print("Fitting with Monte Carlo, diagonal covariance variational family")
-            self._fit_MC()
+            
+            self._trainig_loop(optimizer) 
+
             self.s = torch.exp(self.u)
+
         elif self.method == 5:
             if self.verbose:
                 print("Fitting with Monte Carlo, full covariance variational family")
+
             self.u = torch.ones(int(self.p * (1 + self.p) / 2.0), dtype=torch.double)
             self.u = self.u * 1/self.p
             self.u.requires_grad = True
-            self._fit_MC_mvn()
+            
+            optmizer = torch.optim.Adam([self.m, self.u], lr=0.01)
+            self._trainig_loop(optimizer)
+
             L = torch.zeros_like(self.Sig)
             L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
             self.s = L.t() @ L
             self.S = self.s
+
         else:
             raise ValueError("Method not recognized")
 
         if self.time: 
             self.runtime = time.time() - start 
 
+        # set l_terms to l_max to be used when computing the ELBO 
+        self.l_terms = self.l_max
 
-    def _fit_TB(self):
-        """
-        Fit the model using the new tight bound
-        """
-        optimizer = torch.optim.SGD([self.m, self.u], lr=0.01, momentum=0.9)
-
-        # training loop
-        for epoch in range(self.n_iter):
-            optimizer.zero_grad()
-            l = ELBO_TB(self.m, self.u, self.y, self.X, self.mu, self.sig, 
-                self.l_max)
-            self.loss.append(l.item())
-
-            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
-                break
-
-            l.backward()
-            optimizer.step()
-
-            if epoch % 20 == 0 and self.verbose:
-                print(epoch, l.item())
-
-
-    def _fit_TB_mvn(self):
-        """
-        Fit the model using the new tight bound
-        """
-        self.cov = torch.cov(self.X.t())
-        # optimizer = torch.optim.SGD([self.m, self.u], lr=0.01, momentum=0.9)
-        optimizer = torch.optim.Adam([self.m, self.u], lr=0.04)
-        
-        # training loop
-        for epoch in range(self.n_iter):
-            optimizer.zero_grad()
-            l = ELBO_TB_mvn(self.m, self.u, self.y, self.X, 
-                self.mu, self.Sig, self.l_max, self.cov)
-            self.loss.append(l.item())
-            
-            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
-                break
-
-            l.backward()
-            optimizer.step()
-
-            if epoch % 20 == 0 and self.verbose:
-                print(epoch, l.item())
     
+    def _loss_below_thresh(self, thresh):
+        """
+        Return True if the relative loss is below the threshold
+        """
+        relative_loss = abs(self.loss[-1] - self.loss[-2]) / self.loss[-2]
+        return relative_loss < self.thresh
+
+
+    def _trainig_loop(self, optimizer):
+        """
+        Training loop
+        """
+        for epoch in range(self.n_iter):
+            optimizer.zero_grad()
+            l = self.ELBO()
+            self.loss.append(l.item())
+
+            l.backward()
+            optimizer.step()
+
+            if self.adaptive_l and (self.method == 0 or self.method == 1): 
+                if epoch > 2 and \
+                    self._loss_below_thresh(self.l_thresh) and \
+                    self.l_terms < self.l_max:
+                        self.l_terms += 1.0
+
+
+            if epoch > 2 and self._loss_below_thresh(self.thresh):
+                break
+
+            if epoch % 20 == 0 and self.verbose:
+                print(epoch, l.item())
+
+
+    def ELBO(self, y=None, X=None):
+        if y is None:
+            y = self.y
+        if X is None:
+            X = self.X
+        
+        if self.method == 0:
+            return ELBO_TB(self.m, self.u, y, X, self.mu, self.sig, self.l_terms)
+        elif self.method == 1:
+            return ELBO_TB_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.l_terms)
+        elif self.method == 2:
+            return ELBO_Jak(self.m, self.u, self.t, y, X, self.mu, self.sig)
+        elif self.method == 3:
+            return ELBO_Jak_mvn(self.m, self.u, self.t, y, X, self.mu, self.Sig)
+        elif self.method == 4:
+            return ELBO_MC(self.m, self.u, y, X, self.mu, self.sig, self.n_samples)
+        elif self.method == 5:
+            return ELBO_MC_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.n_samples)
+        else:
+            raise ValueError("Method not recognized")
+
 
     def _fit_Jak(self):
         """
-        Fit the model using Jaak bound
+        Fit the model using Jaak bound, this is analytic
         """
         self.t = torch.ones(self.n, dtype=torch.double)
         self.m.requires_grad = False
@@ -444,7 +480,7 @@ class LogisticVI:
             l = ELL_Jak(self.m, self.s, self.t, self.y, self.X) + KL(self.m, self.s, self.mu, self.sig)
             self.loss.append(l.item())
 
-            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
+            if epoch > 2 and loss_below_thresh():
                 break
             
             if epoch % 20 == 0 and self.verbose:
@@ -469,53 +505,8 @@ class LogisticVI:
             l = ELL_Jak_mvn(self.m, self.S, self.t, self.y, self.X) + KL_mvn(self.m, self.S, self.mu, self.Sig)
             self.loss.append(l.item())
 
-            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
+            if epoch > 2 and loss_below_thresh():
                 break
-
-            if epoch % 20 == 0 and self.verbose:
-                print(epoch, l.item())
-
-
-    def _fit_MC(self):
-        """
-        Fit the model using monte carlo
-        """
-        optimizer = torch.optim.SGD([self.m, self.u], lr=0.01, momentum=0.9)
-
-        # training loop
-        for epoch in range(self.n_iter):
-            optimizer.zero_grad()
-            l = ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
-            self.loss.append(l.item())
-
-            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
-                break
-
-            l.backward()
-            optimizer.step()
-
-            if epoch % 20 == 0 and self.verbose:
-                print(epoch, l.item())
-    
-
-    def _fit_MC_mvn(self):
-        """
-        Fit the model using monte carlo
-        """
-        optimizer = torch.optim.Adam([self.m, self.u], lr=0.04)
-        
-        # training loop
-        for epoch in range(self.n_iter):
-            optimizer.zero_grad()
-            l = ELBO_MC_mvn(self.m, self.u, self.y, self.X, 
-                self.mu, self.Sig, self.n_samples)
-            self.loss.append(l.item())
-            
-            if epoch > 2 and abs(self.loss[-1] - self.loss[-2]) < self.thresh:
-                break
-
-            l.backward()
-            optimizer.step()
 
             if epoch % 20 == 0 and self.verbose:
                 print(epoch, l.item())
@@ -531,28 +522,6 @@ class LogisticVI:
             X = torch.cat((torch.ones(X.size()[0], 1), X), 1)
 
         return torch.sigmoid(X @ self.m)
-
-
-    def ELBO(self, y=None, X=None):
-        if y is None:
-            y = self.y
-        if X is None:
-            X = self.X
-        
-        if self.method == 0:
-            return ELBO_TB(self.m, self.u, y, X, self.mu, self.sig)
-        elif self.method == 1:
-            return ELBO_TB_mvn(self.m, self.u, y, X, self.mu, self.Sig, cov=self.cov)
-        elif self.method == 2:
-            return ELBO_Jak(self.m, self.u, self.t, y, X, self.mu, self.sig)
-        elif self.method == 3:
-            return ELBO_Jak_mvn(self.m, self.u, self.t, y, X, self.mu, self.Sig)
-        elif self.method == 4:
-            return ELBO_MC(self.m, self.u, y, X, self.mu, self.sig, self.n_samples)
-        elif self.method == 5:
-            return ELBO_MC_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.n_samples)
-        else:
-            raise ValueError("Method not recognized")
 
 
     def sample(self, n_samples=10000):

@@ -8,6 +8,7 @@ from importlib import reload
 
 from _01_data_generation import generate_data
 from _02_method import *
+from _00_funcs import *
 
 
 
@@ -158,15 +159,17 @@ for epoch in range(500):
 
 
 
-
-
 # test other formulation of cov matrix
-p = 10
-dat = generate_data(250, p)
+p = 5
+dat = generate_data(30000, p)
 
-f = LogisticVI(dat, intercept=False, method=2, seed=0, l_max=10.0)
+f = LogisticVI(dat, intercept=False, method=0, seed=0, adaptive_l=False,
+    n_iter=5000, verbose=True, thresh=1e-8, l_thresh=1e-2)
 f.fit()
+f.s
 f.ELBO()
+evaluate_method(f, dat)
+f.runtime
 
 
 m = torch.randn(p, requires_grad=True, dtype=torch.double)
