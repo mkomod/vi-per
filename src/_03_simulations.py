@@ -15,7 +15,7 @@ parser.add_argument("-r", "--runs", type=int, default=100)
 args = parser.parse_args()
 
 DGP = args.dgp
-N = [500, 1000, 10000][args.n]
+N = [500, 1000, 10000, 20000][args.n]
 P = [5, 10, 25][args.p]
 RUNS = args.runs
 

@@ -4,7 +4,7 @@
 
 for dgp in {0..2} 
 do
-    for N in {0..2}
+    for N in {0..3}
     do
         for P in {0..2}
         do
