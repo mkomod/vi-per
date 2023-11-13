@@ -4,6 +4,8 @@ import time
 import torch
 import torch.distributions as dist
 
+import hamiltorch
+
 from torch.special import log_ndtr, ndtr
 from torch.nn.functional import logsigmoid
 
@@ -575,7 +577,7 @@ class LogisticVI:
 class LogisticMCMC:
     def __init__(self, dat, intercept=True, n_iter=1e4, burnin=5e3, 
         mu=None, sig=None, Sig=None,
-        verbose=False,  time=True, seed=1, k=10):
+        verbose=False, time=True, seed=1, k=10):
         """ 
         Initialize the class
         :param dat: data
@@ -596,14 +598,15 @@ class LogisticMCMC:
         self.runtime = 0
         self.burnin = int(burnin)
         self.n_iter = int(n_iter)
-        self.k = k
+        self.step_size = 0.01
+        self.L=25
 
         if intercept:
             self.X = torch.cat((torch.ones(self.X.size()[0], 1), self.X), 1)
 
         self.n = self.X.size()[0]
         self.p = self.X.size()[1]
-        self.b = torch.randn(self.p, dtype=torch.double)
+        self.b_init = torch.randn(self.p, dtype=torch.double)
         self.loss = []
 
         # priors
@@ -630,6 +633,12 @@ class LogisticMCMC:
         Compute the log-likelihood
         """
         return torch.sum(self.y * (self.X @ b) - torch.log1p(torch.exp(self.X @ b)))
+
+    def log_prob(self, b):
+        """
+        Compute the log-probability
+        """
+        return self.log_prior(b) + self.log_likelihood(b)
         
     
     def fit(self):
@@ -639,41 +648,24 @@ class LogisticMCMC:
         if self.time:
             start = time.time()
 
-        self.B = torch.zeros((self.n_iter, int(self.p)), dtype=torch.double)
-        self.loss = []
-        self._fit_MH()
+        self._fit()
 
         if self.time: 
             self.runtime = time.time() - start
 
-        self.B = self.B[int(self.burnin):, :]
         self.m = self.B.mean(dim=0)
 
 
-    def _fit_MH(self):
+    def _fit(self):
         """
         Fit the model using MH
         """
-        self.b = torch.randn(self.p, dtype=torch.double)
-        self.b_new = self.b.clone()
-
-        # training loop
-        for epoch in range(self.n_iter):
-            for j in range(self.p):
-                self.b_new[j] = self.b[j] + torch.randn(1, dtype=torch.double) / self.k
-
-                # acceptance probability
-                prob = torch.exp(self.log_likelihood(self.b_new) + self.log_prior(self.b_new) -\
-                     (self.log_likelihood(self.b) + self.log_prior(self.b)))
-
-                if torch.rand(1) < prob:
-                    self.b[j] = self.b_new[j]
-            
-            self.B[epoch, :] = self.b
-            self.loss.append(self.log_likelihood(self.b).item())
-
-            if epoch % 20 == 0 and self.verbose:
-                print(epoch, self.log_likelihood(self.b).item())
+        hamiltorch.set_random_seed(self.seed)
+        self.B = hamiltorch.sample(log_prob_func=self.log_prob, 
+                    params_init=self.b_init, num_samples=self.n_iter, 
+                    step_size=self.step_size, num_steps_per_sample=self.L, 
+                    burn=self.burnin, verbose=not self.verbose)
+        self.B = torch.stack(self.B)
 
 
     def predict(self, X):

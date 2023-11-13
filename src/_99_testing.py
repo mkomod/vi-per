@@ -60,9 +60,9 @@ autograd.gradcheck(ELBO_Jak, (m, s,t,  dat["y"], dat["X"], mu, sig))
 autograd.gradcheck(ELBO_MC, (m, u, dat["y"], dat["X"], mu, sig)) 
 
 p = 20
-dat = generate_data(10000, p, dgp=2)
+dat = generate_data(1000, p, dgp=2)
 
-f = LogisticVI(dat, intercept=False, method=1, verbose=True)
+f = LogisticVI(dat, intercept=False, method=3, verbose=True)
 f.fit()
 f.runtime
 evaluate_method(f, dat)
@@ -70,10 +70,8 @@ evaluate_method(f, dat)
 X = dat["X"]
 a_t = torch.diag(torch.randn(10000, dtype=torch.double))
 
-
-
-
-f = LogisticMCMC(dat, intercept=False)
+f = LogisticMCMC(dat, intercept=False, n_iter=1000, burnin=500, verbose=True)
 f.fit()
 f.runtime
 evaluate_method(f, dat)
+
