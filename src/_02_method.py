@@ -51,13 +51,16 @@ def KL_MC(m, s, mu, sig):
     return torch.mean(torch.sum(d1.log_prob(x) - d2.log_prob(x), 1))
  
 
-def ELL_TB(m, s, y, X, l_max = 10.0):
+def ELL_TB(m, s, y, X, l_max = 10.0, XX=None):
     """
     Compute the expected negative log-likelihood
     :return: ELL
     """
     M = X @ m
-    S = torch.sqrt(X ** 2 @ s ** 2)
+    if XX is None:
+        S = torch.sqrt(X ** 2 @ s ** 2)
+    else:
+        S = torch.sqrt(XX @ s ** 2)
     l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
 
     M = M.unsqueeze(1)
@@ -143,7 +146,7 @@ def ELL_MC_mvn(m, S, y, X, n_samples=1000):
     :return: ELL
     """
     M = X @ m
-    S = torch.diag(X @ S @ X.t())
+    # S = torch.diag(X @ S @ X.t())
     
     U = torch.linalg.cholesky(S)
     S = torch.sum((X @ U) ** 2, dim=1)
@@ -170,7 +173,9 @@ def ELL_Jak(m, s, t, y, X):
     """
     M = X @ m
     a_t = (torch.sigmoid(t) - 0.5) / t
-    B = a_t * torch.diag(X @ (torch.diag(s**2) + torch.outer(m, m)) @ X.t())
+    S = torch.diag(s**2) + torch.outer(m, m)
+    U = torch.linalg.cholesky(S)
+    B = a_t * torch.sum((X @ U) ** 2, dim=1)
 
     res = - torch.dot(y, M) - torch.sum(logsigmoid(t)) + \
         0.5 * torch.sum(M + t) + 0.5 * torch.sum(B)   - \
@@ -187,7 +192,9 @@ def ELL_Jak_mvn(m, S, t, y, X):
     """
     M = X @ m
     a_t = (torch.sigmoid(t) - 0.5) / t
-    B = a_t * torch.diag(X @ (S + torch.outer(m, m)) @ X.t())
+    SS = S + torch.outer(m, m)
+    U = torch.linalg.cholesky(SS)
+    B = a_t * torch.sum((X @ U) ** 2, dim=1)
 
     res = - torch.dot(y, M) - torch.sum(logsigmoid(t)) + \
         0.5 * torch.sum(M + t) + 0.5 * torch.sum(B)   - \
@@ -196,13 +203,13 @@ def ELL_Jak_mvn(m, S, t, y, X):
     return res
 
 
-def ELBO_TB(m, u, y, X, mu, sig, l_max = 10.0):
+def ELBO_TB(m, u, y, X, mu, sig, l_max = 10.0, XX=None):
     """
     Compute the negative of the ELBO
     :return: ELBO
     """
     s = torch.exp(u)
-    return ELL_TB(m, s, y, X, l_max=l_max) + KL(m, s, mu, sig)
+    return ELL_TB(m, s, y, X, l_max=l_max, XX=XX) + KL(m, s, mu, sig)
 
 
 def ELBO_TB_mvn(m, u, y, X, mu, Sig, l_max = 10.0):
@@ -273,8 +280,9 @@ def ELBO_Jak_mvn(m, u, t, y, X, mu, Sig, cov=None):
 class LogisticVI:
     def __init__(self, dat, intercept=True, method=0, 
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
-        adaptive_l=True, l_thresh=1e-2, l_max=10.0, n_iter=1500, 
-        thresh=1e-8, verbose=False, n_samples=250, time=True, seed=1):
+        n_iter=1200, thresh=1e-8, verbose=False, lr=0.10,
+        adaptive_l=False, l_thresh=1e-2, l_max=12.0,
+        n_samples=250, seed=1):
         """ 
         Initialize the class
         :param dat: data
@@ -295,10 +303,10 @@ class LogisticVI:
         self.runtime = 0
         self.seed = seed
         self.thresh = thresh
-        self.time = time
         self.verbose = verbose
         self.adaptive_l = adaptive_l
         self.l_thresh = l_thresh
+        self.lr = lr
         self.y = dat["y"]
 
         if adaptive_l:
@@ -335,8 +343,7 @@ class LogisticVI:
         """
         Fit the model
         """
-        if self.time:
-            start = time.time()
+        start = time.time()
 
         self.m = self.m_init.clone()
         self.m.requires_grad = True
@@ -344,12 +351,13 @@ class LogisticVI:
         self.u.requires_grad = True
         self.loss = []
 
-        optimizer = torch.optim.Adam([self.m, self.u], lr=0.01)
+        optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
 
         if self.method == 0:
             if self.verbose:
                 print("Fitting with proposed bound, diagonal covariance variational family")
-
+            
+            self.XX = self.X ** 2
             self._trainig_loop(optimizer)
             self.s = torch.exp(self.u)
 
@@ -361,7 +369,7 @@ class LogisticVI:
             self.u = self.u * 1/self.p
             self.u.requires_grad = True
 
-            optimizer = torch.optim.Adam([self.m, self.u], lr=0.01)
+            optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
             self._trainig_loop(optimizer)
 
             L = torch.zeros_like(self.Sig)
@@ -399,7 +407,7 @@ class LogisticVI:
             self.u = self.u * 1/self.p
             self.u.requires_grad = True
             
-            optmizer = torch.optim.Adam([self.m, self.u], lr=0.01)
+            optmizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
             self._trainig_loop(optimizer)
 
             L = torch.zeros_like(self.Sig)
@@ -410,10 +418,7 @@ class LogisticVI:
         else:
             raise ValueError("Method not recognized")
 
-        if self.time: 
-            self.runtime = time.time() - start 
-
-        # set l_terms to l_max to be used when computing the ELBO 
+        self.runtime = time.time() - start 
         self.l_terms = self.l_max
 
     
@@ -451,24 +456,19 @@ class LogisticVI:
                 print(epoch, l.item())
 
 
-    def ELBO(self, y=None, X=None):
-        if y is None:
-            y = self.y
-        if X is None:
-            X = self.X
-        
+    def ELBO(self):
         if self.method == 0:
-            return ELBO_TB(self.m, self.u, y, X, self.mu, self.sig, self.l_terms)
+            return ELBO_TB(self.m, self.u, self.y, self.X, self.mu, self.sig, self.l_terms, XX=self.XX)
         elif self.method == 1:
-            return ELBO_TB_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.l_terms)
+            return ELBO_TB_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, self.l_terms)
         elif self.method == 2:
-            return ELBO_Jak(self.m, self.u, self.t, y, X, self.mu, self.sig)
+            return ELBO_Jak(self.m, self.u, self.t, self.y, self.X, self.mu, self.sig)
         elif self.method == 3:
-            return ELBO_Jak_mvn(self.m, self.u, self.t, y, X, self.mu, self.Sig)
+            return ELBO_Jak_mvn(self.m, self.u, self.t, self.y, self.X, self.mu, self.Sig)
         elif self.method == 4:
-            return ELBO_MC(self.m, self.u, y, X, self.mu, self.sig, self.n_samples)
+            return ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
         elif self.method == 5:
-            return ELBO_MC_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.n_samples)
+            return ELBO_MC_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, self.n_samples)
         else:
             raise ValueError("Method not recognized")
 
@@ -481,12 +481,17 @@ class LogisticVI:
         self.m.requires_grad = False
         self.u.requires_grad = False
         self.s = torch.exp(self.u)
+        V = self.X.t() @ (self.y - 0.5)
 
         for epoch in range(self.n_iter):
             a_t = (torch.sigmoid(self.t) - 0.5) / self.t
-            self.m = torch.inverse(self.X.t() @ torch.diag(a_t) @ self.X + torch.diag(1/self.sig**2)) @ (self.mu / self.sig**2 + self.X.t() @ (self.y - 0.5))
-            self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + self.X.t() @ torch.diag(a_t) @ self.X)))
-            self.t = torch.sqrt(torch.diag(self.X @ (torch.diag(self.s**2) + torch.outer(self.m, self.m)) @ self.X.t()))
+            C = self.X.t() @ torch.diag(a_t) @ self.X
+            self.m = torch.inverse(C + torch.diag(1/self.sig**2)) @ (self.mu / self.sig**2 + V)
+            self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + C)))
+            
+            S = torch.diag(self.s**2)  + torch.outer(self.m, self.m)
+            U = torch.linalg.cholesky(S)
+            self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
             
             l = ELL_Jak(self.m, self.s, self.t, self.y, self.X) + KL(self.m, self.s, self.mu, self.sig)
             self.loss.append(l.item())
@@ -506,12 +511,18 @@ class LogisticVI:
         self.m.requires_grad = False
         self.u.requires_grad = False
         self.S = torch.diag(torch.exp(self.u))
-        
+        V = self.X.t() @ (self.y - 0.5)
+
         for epoch in range(self.n_iter):
             a_t = (torch.sigmoid(self.t) - 0.5) / self.t
-            self.m = self.S @ (torch.inverse(self.Sig) @ self.mu + self.X.t() @ (self.y - 0.5))
-            self.S = torch.inverse(torch.inverse(self.Sig) + self.X.t() @ torch.diag(a_t) @ self.X)
-            self.t = torch.sqrt(torch.diag(self.X @ (self.S  + torch.outer(self.m, self.m)) @ self.X.t()))
+            C = self.X.t() @ torch.diag(a_t) @ self.X
+            
+            self.m = self.S @ (torch.inverse(self.Sig) @ self.mu + V)
+            self.S = torch.inverse(torch.inverse(self.Sig) + C)
+
+            S = self.S  + torch.outer(self.m, self.m)
+            U = torch.linalg.cholesky(S)
+            self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
             
             l = ELL_Jak_mvn(self.m, self.S, self.t, self.y, self.X) + KL_mvn(self.m, self.S, self.mu, self.Sig)
             self.loss.append(l.item())
