@@ -163,7 +163,7 @@ for epoch in range(500):
 p = 5
 dat = generate_data(30000, p)
 
-f = LogisticVI(dat, intercept=False, method=0, seed=0, adaptive_l=False,
+f = LogisticVI(dat, intercept=False, method=0, seed=0, adaptive_l=True,
     n_iter=5000, verbose=True, thresh=1e-8, l_thresh=1e-2)
 f.fit()
 f.s

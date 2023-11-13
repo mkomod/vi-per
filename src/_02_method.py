@@ -480,7 +480,7 @@ class LogisticVI:
             l = ELL_Jak(self.m, self.s, self.t, self.y, self.X) + KL(self.m, self.s, self.mu, self.sig)
             self.loss.append(l.item())
 
-            if epoch > 2 and loss_below_thresh():
+            if epoch > 2 and self._loss_below_thresh(self.thresh):
                 break
             
             if epoch % 20 == 0 and self.verbose:
@@ -505,7 +505,7 @@ class LogisticVI:
             l = ELL_Jak_mvn(self.m, self.S, self.t, self.y, self.X) + KL_mvn(self.m, self.S, self.mu, self.Sig)
             self.loss.append(l.item())
 
-            if epoch > 2 and loss_below_thresh():
+            if epoch > 2 and self._loss_below_thresh(self.thresh):
                 break
 
             if epoch % 20 == 0 and self.verbose:
