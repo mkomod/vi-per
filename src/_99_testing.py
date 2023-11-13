@@ -161,7 +161,15 @@ for epoch in range(500):
 
 # test other formulation of cov matrix
 p = 5
-dat = generate_data(300, p)
+dat = generate_data(1000, p)
+
+f = LogisticVI(dat, intercept=False, method=1, seed=0)
+
+f = LogisticMCMC(dat, intercept=False, n_iter=10000, burnin=5000, k=10)
+f.fit()
+f.runtime
+f.s
+
 
 f = LogisticVI(dat, intercept=False, method=1, seed=0, adaptive_l=True,
     n_iter=5000, verbose=True, thresh=1e-8, l_thresh=1e-2)
