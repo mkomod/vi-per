@@ -1,8 +1,8 @@
 import torch
 
-for dgp in range(0, 3):
-    for n in range(2,3):
-        for p in range(0, 1):
+for dgp in range(0, 2):
+    for n in range(0, 4):
+        for p in range(0, 2):
             res = torch.load(f"../results/res_{dgp}_{n}_{p}.pt")
             rm = res.mean(dim=1)
             rs = res.std(dim=2)

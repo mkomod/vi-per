@@ -291,10 +291,10 @@ def ELBO_Jak_mvn(m, u, t, y, X, mu, Sig, cov=None):
 
 
 class LogisticVI:
-    def __init__(self, dat, intercept=True, method=0, 
+    def __init__(self, dat, intercept=False, method=0, 
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
         n_iter=1200, thresh=1e-8, verbose=False, lr=0.10,
-        adaptive_l=False, l_thresh=1e-2, l_max=12.0,
+        l_max=12.0, adaptive_l=False, l_thresh=1e-2, 
         n_samples=250, seed=1):
         """ 
         Initialize the class
@@ -537,7 +537,7 @@ class LogisticVI:
             self.S = torch.inverse(torch.inverse(self.Sig) + C)
 
             S = self.S  + torch.outer(self.m, self.m)
-             
+
             try:
                 U = torch.linalg.cholesky(S)
                 self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
@@ -593,9 +593,9 @@ class LogisticVI:
             
 
 class LogisticMCMC:
-    def __init__(self, dat, intercept=True, n_iter=1e4, burnin=5e3, 
-        mu=None, sig=None, Sig=None,
-        verbose=False, time=True, seed=1, k=10):
+    def __init__(self, dat, intercept=False, n_iter=1e4, burnin=5e3, 
+        mu=None, sig=None, Sig=None, verbose=False, 
+        step_size=0.01, L=25, seed=1):
         """ 
         Initialize the class
         :param dat: data
@@ -616,8 +616,8 @@ class LogisticMCMC:
         self.runtime = 0
         self.burnin = int(burnin)
         self.n_iter = int(n_iter)
-        self.step_size = 0.01
-        self.L=25
+        self.step_size = step_size
+        self.L=L
 
         if intercept:
             self.X = torch.cat((torch.ones(self.X.size()[0], 1), self.X), 1)
