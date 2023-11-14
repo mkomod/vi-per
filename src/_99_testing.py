@@ -60,10 +60,11 @@ autograd.gradcheck(ELBO_Jak, (m, s,t,  dat["y"], dat["X"], mu, sig))
 autograd.gradcheck(ELBO_MC, (m, u, dat["y"], dat["X"], mu, sig)) 
 
 p = 20
-dat = generate_data(1000, p, dgp=2)
 
-f = LogisticVI(dat, intercept=False, method=4, verbose=True)
+dat = generate_data(10000, 25, dgp=1, seed=99)
+f = LogisticVI(dat, intercept=False, method=1, verbose=True)
 f.fit()
+
 f.runtime
 evaluate_method(f, dat)
 

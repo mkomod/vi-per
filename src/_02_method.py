@@ -356,12 +356,26 @@ class LogisticVI:
         """
         Fit the model
         """
+        # fit the method with the defaults
+        self._fit()
+
+        # if there is an issue i.e. nan values, reduce the learning rate 
+        while (torch.any(self.m.isnan()) or torch.any(self.u.isnan())):
+            self.lr = max(0.01, self.lr - 0.01)
+            self._fit()
+            
+
+    def _fit(self):
+        """ fitting method """ 
         start = time.time()
 
+        # reset parameters
         self.m = self.m_init.clone()
-        self.m.requires_grad = True
         self.u = self.u_init.clone()
+
+        self.m.requires_grad = True
         self.u.requires_grad = True
+
         self.loss = []
 
         optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
@@ -454,6 +468,9 @@ class LogisticVI:
 
             l.backward()
             optimizer.step()
+
+            if torch.any(self.m.isnan()) or torch.any(self.u.isnan()):
+                break
 
             if self.adaptive_l and (self.method == 0 or self.method == 1): 
                 if epoch > 2 and \
