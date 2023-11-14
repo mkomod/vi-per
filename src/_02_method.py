@@ -293,7 +293,7 @@ def ELBO_Jak_mvn(m, u, t, y, X, mu, Sig, cov=None):
 class LogisticVI:
     def __init__(self, dat, intercept=False, method=0, 
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
-        n_iter=1200, thresh=1e-8, verbose=False, lr=0.10,
+        n_iter=1200, thresh=1e-8, verbose=False, lr=0.08,
         l_max=12.0, adaptive_l=False, l_thresh=1e-2, 
         n_samples=250, seed=1):
         """ 
