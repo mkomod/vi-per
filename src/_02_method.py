@@ -63,6 +63,7 @@ def ELL_TB(m, s, y, X, l_max = 10.0, XX=None):
         S = torch.sqrt(X ** 2 @ s ** 2)
     else:
         S = torch.sqrt(XX @ s ** 2)
+
     l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
 
     M = M.unsqueeze(1)
@@ -95,10 +96,11 @@ def ELL_TB_mvn(m, S, y, X, l_max = 10.0):
     M = X @ m
     # S = torch.diag(X @ S @ X.t()) # this is too slow!
     
-    U = torch.linalg.cholesky(S)
-    S = torch.sum((X @ U) ** 2, dim=1)
-
-    # S = torch.sum(X * (S @ X.t()).t(), dim=1)
+    try: 
+        U = torch.linalg.cholesky(S)
+        S = torch.sum((X @ U) ** 2, dim=1)
+    except:
+        S = torch.sum(X * (S @ X.t()).t(), dim=1)
 
     l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
 
@@ -149,11 +151,12 @@ def ELL_MC_mvn(m, S, y, X, n_samples=1000):
     """
     M = X @ m
     # S = torch.diag(X @ S @ X.t())
-    
-    U = torch.linalg.cholesky(S)
-    S = torch.sum((X @ U) ** 2, dim=1)
 
-    # S = torch.sum(X * (S @ X.t()).t(), dim=1)
+    try: 
+        U = torch.linalg.cholesky(S)
+        S = torch.sum((X @ U) ** 2, dim=1)
+    except:
+        S = torch.sum(X * (S @ X.t()).t(), dim=1)
 
     with torch.no_grad():    
         norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
@@ -176,8 +179,12 @@ def ELL_Jak(m, s, t, y, X):
     M = X @ m
     a_t = (torch.sigmoid(t) - 0.5) / t
     S = torch.diag(s**2) + torch.outer(m, m)
-    U = torch.linalg.cholesky(S)
-    B = a_t * torch.sum((X @ U) ** 2, dim=1)
+
+    try:
+        U = torch.linalg.cholesky(S)
+        B = a_t * torch.sum((X @ U) ** 2, dim=1)
+    except:
+        B = a_t * torch.sum(X * (S @ X.t()).t(), dim=1)
 
     res = - torch.dot(y, M) - torch.sum(logsigmoid(t)) + \
         0.5 * torch.sum(M + t) + 0.5 * torch.sum(B)   - \
@@ -195,8 +202,12 @@ def ELL_Jak_mvn(m, S, t, y, X):
     M = X @ m
     a_t = (torch.sigmoid(t) - 0.5) / t
     SS = S + torch.outer(m, m)
-    U = torch.linalg.cholesky(SS)
-    B = a_t * torch.sum((X @ U) ** 2, dim=1)
+
+    try:
+        U = torch.linalg.cholesky(SS)
+        B = a_t * torch.sum((X @ U) ** 2, dim=1)
+    except:
+        B = a_t * torch.sum(X * (SS @ X.t()).t(), dim=1)
 
     res = - torch.dot(y, M) - torch.sum(logsigmoid(t)) + \
         0.5 * torch.sum(M + t) + 0.5 * torch.sum(B)   - \
@@ -490,10 +501,13 @@ class LogisticVI:
             C = self.X.t() @ torch.diag(a_t) @ self.X
             self.m = torch.inverse(C + torch.diag(1/self.sig**2)) @ (self.mu / self.sig**2 + V)
             self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + C)))
-            
+
             S = torch.diag(self.s**2)  + torch.outer(self.m, self.m)
-            U = torch.linalg.cholesky(S)
-            self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
+            try:
+                U = torch.linalg.cholesky(S)
+                self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
+            except:
+                self.t = torch.sqrt(torch.sum(self.X * (S @ self.X.t()).t(), dim=1))
             
             l = ELL_Jak(self.m, self.s, self.t, self.y, self.X) + KL(self.m, self.s, self.mu, self.sig)
             self.loss.append(l.item())
@@ -523,8 +537,12 @@ class LogisticVI:
             self.S = torch.inverse(torch.inverse(self.Sig) + C)
 
             S = self.S  + torch.outer(self.m, self.m)
-            U = torch.linalg.cholesky(S)
-            self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
+             
+            try:
+                U = torch.linalg.cholesky(S)
+                self.t = torch.sqrt(torch.sum((self.X @ U) ** 2, dim=1))
+            except:
+                self.t = torch.sqrt(torch.sum(self.X * (S @ self.X.t()).t(), dim=1))
             
             l = ELL_Jak_mvn(self.m, self.S, self.t, self.y, self.X) + KL_mvn(self.m, self.S, self.mu, self.Sig)
             self.loss.append(l.item())
