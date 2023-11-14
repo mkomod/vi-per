@@ -31,7 +31,7 @@ def run_experiment(seed):
     f3 = LogisticVI(dat, method=3, intercept=False) 
     f4 = LogisticVI(dat, method=4, intercept=False) 
     f5 = LogisticVI(dat, method=5, intercept=False) 
-    f6 = LogisticMCMC(dat, intercept=False, n_iter=10000, burnin=5000)
+    f6 = LogisticMCMC(dat, intercept=False, n_iter=30000, burnin=25000)
 
     f0.fit(); f1.fit(); f2.fit(); f3.fit(); f4.fit(); f5.fit(); f6.fit()
 

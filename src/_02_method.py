@@ -295,7 +295,7 @@ class LogisticVI:
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
         n_iter=1200, thresh=1e-8, verbose=False, lr=0.08,
         l_max=12.0, adaptive_l=False, l_thresh=1e-2, 
-        n_samples=250, seed=1):
+        n_samples=500, seed=1):
         """ 
         Initialize the class
         :param dat: data
@@ -610,7 +610,7 @@ class LogisticVI:
             
 
 class LogisticMCMC:
-    def __init__(self, dat, intercept=False, n_iter=1e4, burnin=5e3, 
+    def __init__(self, dat, intercept=False, n_iter=3e4, burnin=25e3, 
         mu=None, sig=None, Sig=None, verbose=False, 
         step_size=0.01, L=25, seed=1):
         """ 
