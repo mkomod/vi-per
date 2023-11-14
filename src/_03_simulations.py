@@ -19,6 +19,7 @@ N = [500, 1000, 10000, 20000][args.n]
 P = [5, 10, 25][args.p]
 RUNS = args.runs
 
+print(f"DGP: {DGP}, N: {N}, P: {P}")
 
 def run_experiment(seed):
     print(f"Experiment {seed}")
