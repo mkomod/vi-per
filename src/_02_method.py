@@ -59,10 +59,13 @@ def ELL_TB(m, s, y, X, l_max = 10.0, XX=None):
     :return: ELL
     """
     M = X @ m
+
     if XX is None:
-        S = torch.sqrt(X ** 2 @ s ** 2)
+        S = torch.sum(X ** 2 * s ** 2, dim=1)
     else:
-        S = torch.sqrt(XX @ s ** 2)
+        S = torch.sum(XX * s ** 2, dim=1)
+    
+    S = torch.sqrt(S)
 
     l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
 

@@ -59,20 +59,26 @@ autograd.gradcheck(ELBO_TB, (m, s, dat["y"], dat["X"], mu, sig))
 autograd.gradcheck(ELBO_Jak, (m, s,t,  dat["y"], dat["X"], mu, sig)) 
 autograd.gradcheck(ELBO_MC, (m, u, dat["y"], dat["X"], mu, sig)) 
 
-p = 20
 
-dat = generate_data(10000, 25, dgp=1, seed=99)
-f = LogisticVI(dat, intercept=False, method=1, verbose=True)
-f.fit()
+from importlib import reload
+import sys
+reload(sys.modules["_02_method"])
 
-f.runtime
-evaluate_method(f, dat)
+dat = generate_data(5000, 25, dgp=2, seed=99)
 
-X = dat["X"]
-a_t = torch.diag(torch.randn(10000, dtype=torch.double))
+f0 = LogisticVI(dat, method=0, intercept=False, verbose=True)
+f0.fit()
+f0.runtime
 
-f = LogisticMCMC(dat, intercept=False, n_iter=1000, burnin=500, verbose=True)
-f.fit()
-f.runtime
-evaluate_method(f, dat)
+f1 = LogisticVI(dat, method=1, intercept=False, verbose=True, n_iter=1500)
+f1.fit()
+f1.runtime
 
+f6 = LogisticMCMC(dat, intercept=False, n_iter=1000, burnin=500, verbose=True)
+f6.fit()
+
+from torch.profiler import profile, record_function, ProfilerActivity
+
+with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof:
+    with record_function("model_inference"):
+        f1.fit()
