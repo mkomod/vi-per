@@ -101,6 +101,8 @@ def ELL_TB_mvn(m, S, y, X, l_max = 10.0):
         S = torch.sum((X @ U) ** 2, dim=1)
     except:
         S = torch.sum(X * (S @ X.t()).t(), dim=1)
+    
+    S = torch.sqrt(S)
 
     l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
 
@@ -132,14 +134,12 @@ def ELL_MC(m, s, y, X, n_samples=1000):
     M = X @ m
     S = torch.sqrt(X ** 2 @ s ** 2)
 
-    with torch.no_grad():    
-        norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
-        samp = norm.sample((n_samples, ))
-        
+    norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+    samp = norm.sample((n_samples, ))
     samp = M + S * samp
 
-    res =  torch.dot(1 - y, M) + \
-        torch.sum(torch.mean(torch.log1p(torch.exp(-samp)), 0))
+    res =  torch.dot( - y, M) + \
+        torch.sum(torch.mean(torch.log1p(torch.exp(samp)), 0))
 
     return res
 
@@ -157,15 +157,15 @@ def ELL_MC_mvn(m, S, y, X, n_samples=1000):
         S = torch.sum((X @ U) ** 2, dim=1)
     except:
         S = torch.sum(X * (S @ X.t()).t(), dim=1)
+    
+    S = torch.sqrt(S)
 
-    with torch.no_grad():    
-        norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
-        samp = norm.sample((n_samples, ))
-        
+    norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+    samp = norm.sample((n_samples, ))
     samp = M + S * samp
 
-    res =  torch.dot(1 - y, M) + \
-        torch.sum(torch.mean(torch.log1p(torch.exp(-samp)), 0))
+    res =  torch.dot( - y, M) + \
+        torch.sum(torch.mean(torch.log1p(torch.exp(samp)), 0))
 
     return res
  
@@ -230,10 +230,6 @@ def ELBO_TB_mvn(m, u, y, X, mu, Sig, l_max = 10.0):
     Compute the negative of the ELBO
     :return: ELBO
     """
-    # if cov is None:
-    #     S = torch.inverse(torch.cov(X.t()) + torch.diag(torch.exp(u)))
-    # else:
-    #     S = torch.inverse(cov + torch.diag(torch.exp(u)))
     p = Sig.size()[0]
     L = torch.zeros(p, p, dtype=torch.double)
     L[torch.tril_indices(p, p, 0).tolist()] = u
@@ -394,6 +390,7 @@ class LogisticVI:
 
             self.u = torch.ones(int(self.p * (1 + self.p) / 2.0), dtype=torch.double)
             self.u = self.u * 1/self.p
+            self.u_init = self.u.clone()
             self.u.requires_grad = True
 
             optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
@@ -401,8 +398,8 @@ class LogisticVI:
 
             L = torch.zeros_like(self.Sig)
             L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
-            self.s = L.t() @ L
-            self.S = self.s
+            self.S = L.t() @ L
+            self.s = torch.sqrt(torch.diag(self.S))
 
         elif self.method == 2:
             if self.verbose:
@@ -415,7 +412,6 @@ class LogisticVI:
                 print("Fitting with Jaakkola and Jordan bound, full covariance variational family")
 
             self._fit_Jak_mvn()
-
             self.s = self.S
 
         elif self.method == 4:
@@ -423,7 +419,6 @@ class LogisticVI:
                 print("Fitting with Monte Carlo, diagonal covariance variational family")
             
             self._trainig_loop(optimizer) 
-
             self.s = torch.exp(self.u)
 
         elif self.method == 5:
@@ -431,16 +426,17 @@ class LogisticVI:
                 print("Fitting with Monte Carlo, full covariance variational family")
 
             self.u = torch.ones(int(self.p * (1 + self.p) / 2.0), dtype=torch.double)
-            self.u = self.u * 1/self.p
+            self.u = self.u * 1.0/self.p
+            self.u_init = self.u.clone()
             self.u.requires_grad = True
             
-            optmizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
+            optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
             self._trainig_loop(optimizer)
 
             L = torch.zeros_like(self.Sig)
             L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
-            self.s = L.t() @ L
-            self.S = self.s
+            self.S = L.t() @ L
+            self.s = torch.sqrt(torch.diag(self.S))
 
         else:
             raise ValueError("Method not recognized")
@@ -584,12 +580,10 @@ class LogisticVI:
 
 
     def sample(self, n_samples=10000):
-        if method == 0 or method == 2:
-            s = torch.exp(self.u)
-            mvn = dist.MultivariateNormal(self.m, torch.diag(s))
-        if method == 1:
-            S = torch.inverse(torch.cov(self.X.t()) + torch.diag(torch.exp(self.u)))
-            mvn = dist.MultivariateNormal(self.m, S)
+        if method == 0 or method == 2 or method == 4:
+            mvn = dist.MultivariateNormal(self.m, torch.diag(self.s))
+        if method == 1 or method == 3 or method == 5:
+            mvn = dist.MultivariateNormal(self.m, self.S)
 
         samp = mvn.sample((n_samples, ))
 
@@ -597,12 +591,9 @@ class LogisticVI:
 
 
     def credible_intervals(self, width=torch.tensor(0.95)):
-        if hasattr(self, "S"):
-            d = dist.Normal(self.m, torch.sqrt(torch.diag(self.S)))
-        else:
-            d = dist.Normal(self.m, self.s)
-
+        d = dist.Normal(self.m, self.s)
         a = (1 - width) / 2
+
         lower = d.icdf(a)
         upper = d.icdf(1 - a)
 
