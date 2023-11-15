@@ -412,7 +412,7 @@ class LogisticVI:
                 print("Fitting with Jaakkola and Jordan bound, full covariance variational family")
 
             self._fit_Jak_mvn()
-            self.s = self.S
+            self.s = torch.sqrt(torch.diag(self.S))
 
         elif self.method == 4:
             if self.verbose:
