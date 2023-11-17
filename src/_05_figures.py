@@ -57,6 +57,10 @@ def mc_est(m, s, n_samples=100000):
     return res
 
 
+
+# ---------------------------
+#        Figure 1
+# ---------------------------
 torch.manual_seed(1)
 ms = torch.linspace(-3, 3, 250)
 s = torch.tensor(2.0)
@@ -86,6 +90,7 @@ m = m.reshape(-1)
 s = s.reshape(-1)
 grid = torch.stack([m, s], dim=1)
 ls = []
+
 # compute the number of terms needed to get the error below 0.01
 for m, s in grid:
     l = 1
@@ -148,26 +153,9 @@ ax[2].set_title("(c) Value of $l$ such that the relative error is below 1%", loc
 plt.savefig("/home/michael/proj/papers/logistic_vb/figures/error.pdf")
 
 
-
-
-#plt.savefig("/home/michael/proj/papers/logistic_vb/figures/grid.pdf")
-# plt.savefig("/home/michael/proj/papers/logistic_vb/figures/grid.pdf")
-
-# plt.scatter(grid[:, 0], grid[:, 1], c=ls, cmap="viridis")
-# plt.colorbar()
-# plt.xlabel("$\\vartheta$")
-# plt.ylabel("$\\tau$")
-# plt.title("Number of terms needed to get the error below 0.01")
-# plt.show()
-# 
-
-
-
-
-
-
-
-# contour plot
+# ---------------------------
+#        Figure 2
+# ---------------------------
 mvn1 = dist.MultivariateNormal(torch.ones(2), torch.eye(2) / 10)
 mvn2 = dist.MultivariateNormal(-torch.ones(2), torch.eye(2)/ 10)
 
@@ -182,7 +170,7 @@ X = X.type(torch.double)
 y = y.type(torch.double)
 
 
-f = LogisticVI({"X": X, "y": y}, method=2, intercept=False, l_max=30.0)
+f = LogisticVI({"X": X, "y": y}, method=1, intercept=False, l_max=30.0)
 f.fit()
 f.m
 f.ELBO()
@@ -207,37 +195,33 @@ plt.ylabel("X2")
 plt.show()
 
 
+# ---------------------------
+#        Figure 3
+# ---------------------------
 
+# import the data from ../results
+# create a  for each of the DGPs and each of the methods
 
+# DGP 0
+# NB
+res = torch.load("../results/res_0_3_0.pt")
+vals = torch.hstack(list(res))
+vals = vals.detach().numpy()
 
+vals = []
 
+for metric in range(0, 5):
+    temp_vals = []
+    for dgp in range(0, 3):
+        res = torch.load(f"../results/res_{dgp}_3_2.pt")
+        res = torch.hstack(list(res))
+        temp_vals.append(res[:, metric::5].detach().numpy())
+    vals.append(temp_vals)
 
+# vals is a list of lists, we want to concat these
+import numpy as np
+vals = [np.hstack(vals[i]) for i in range(0, 5)]
 
-# plot the results for the two methods as boxplots, one for each metric, 
-# both methods on the same plot
-# fig, ax = plt.subplots(1, 3, figsize=(10, 5))
-# ax[0].boxplot(torch.tensor(res0)[:, 0], positions=[1], labels=["TB"],
-#     showfliers=True, showmeans=True, meanline=True, 
-#     meanprops={"color": "yellow"}, medianprops={"color": "white"},
-#     capprops={"color": "black"}, whiskerprops={"color": "black"}, 
-#     boxprops={"color": "black", "facecolor": "blue", "alpha": 0.5},
-#     flierprops={"color":"black", "markeredgecolor":"black"},
-#     patch_artist=True, widths=0.5)
-# ax[0].boxplot(torch.tensor(res1)[:, 0], positions=[2], labels=["Jak"],
-#     showfliers=True, showmeans=True, meanline=True, 
-#     meanprops={"color": "red"}, medianprops={"color": "white"},
-#     capprops={"color": "black"}, whiskerprops={"color": "black"}, 
-#     boxprops={"color": "black", "facecolor": "orange", "alpha": 0.5},
-#     flierprops={"color":"black", "markeredgecolor":"black"},
-#     patch_artist=True, widths=0.5)
-# ax[0].set_ylabel("MSE")
-# 
-# ax[1].boxplot([torch.tensor(res0)[:, 1], torch.tensor(res1)[:, 1]], labels=["TB", "Jak"])
-# ax[1].set_ylabel("AUC")
-# ax[2].boxplot([torch.tensor(res0)[:, 2], torch.tensor(res1)[:, 2]], labels=["TB", "Jak"])
-# ax[2].set_ylabel("Runtime (s)")
-# 
-# for i in range(3):
-#     ax[i].grid(color="lightgrey", linestyle="--", alpha=0.5)
-# plt.show()
-# 
+plt.boxplot(vals[4])
+plt.yscale("log")
+plt.show()

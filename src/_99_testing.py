@@ -64,7 +64,7 @@ from importlib import reload
 import sys
 reload(sys.modules["_02_method"])
 
-dat = generate_data(5000, 25, dgp=2, seed=99)
+dat = generate_data(1000, 25, dgp=2, seed=99)
 
 f0 = LogisticVI(dat, method=0, intercept=False, verbose=True)
 f0.fit()
@@ -78,7 +78,99 @@ f6 = LogisticMCMC(dat, intercept=False, n_iter=1000, burnin=500, verbose=True)
 f6.fit()
 
 from torch.profiler import profile, record_function, ProfilerActivity
+f1 = LogisticVI(dat, method=1, intercept=False, verbose=True, n_iter=1500)
 
 with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof:
     with record_function("model_inference"):
         f1.fit()
+
+
+print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
+
+
+
+#
+#
+# 
+
+def nb_2(m, s, l_max = 10.0):
+    l = torch.arange(1.0, l_max*2, 1.0, requires_grad=False, dtype=torch.float64)
+    l = l.unsqueeze(0)
+
+    res = torch.sum(
+            s / torch.sqrt(2.0 * torch.tensor(torch.pi)) * torch.exp(- 0.5 * m**2 / s**2) + \
+            m * ndtr(m / s)
+        ) + \
+        torch.sum(
+            (-1.0)**(l - 1.0) / l * (
+                torch.exp( m @ l + 0.5 * s**2 @ (l ** 2) + log_ndtr(-m / s - s @ l)) + \
+                torch.exp(-m @ l + 0.5 * s**2 @ (l ** 2) + log_ndtr( m / s - s @ l))
+            )
+        )
+    return res
+
+
+dat = generate_data(20000, 20, dgp=2, seed=99)
+f0 = LogisticVI(dat, method=0, intercept=False, verbose=True, l_max=12.0)
+f0.fit()
+evaluate_method(f0, dat)
+
+
+m = torch.tensor(-1.0, dtype=torch.double, requires_grad=True)
+s = torch.tensor(2.0, dtype=torch.double, requires_grad=True)
+
+nor = dist.Normal(m, s)
+samp = nor.sample((5000, ))
+
+plt.hist(torch.log1p(torch.exp(samp)).detach().numpy(), bins=100)
+plt.show()
+
+m = m.unsqueeze(0)
+s = s.unsqueeze(0)
+
+for l in range(1, 20):
+    nb(m, s, l_max=l)
+
+mc_est(m, s, n_samples=1000000)
+
+res = []
+res0 = []
+for l in range(1, 20):
+    m = torch.tensor(0.152, dtype=torch.double, requires_grad=True)
+    s = torch.tensor(0.486, dtype=torch.double, requires_grad=True)
+    r = nb(m, s, l_max=l)
+    r.backward()
+    res.append(s.grad.item())
+    
+    m = torch.tensor(0.155, dtype=torch.double, requires_grad=True)
+    s = torch.tensor(0.498, dtype=torch.double, requires_grad=True)
+    r = nb(m, s, l_max=l)
+    r.backward()
+    res0.append(s.grad.item())
+    
+
+plt.plot(range(1, 20), res)
+plt.plot(range(1, 20), res0)
+plt.show()
+
+res
+
+dat = generate_data(1000, 5, dgp=0, seed=9)
+f = LogisticVI(dat, method=0, intercept=False, verbose=True, l_max=12.0)
+f.fit()
+evaluate_method(f, dat)
+
+
+
+
+MM = dat["X"] @ f.m
+
+plt.hist(MM.detach().numpy(), bins=100)
+plt.show()
+
+SS = dat["X"] ** 2 @ f.s**2
+plt.hist(SS.detach().numpy(), bins=100)
+plt.show()
+SS.mean()
+MM.mean()
+
