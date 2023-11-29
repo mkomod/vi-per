@@ -10,9 +10,9 @@ for p in range(0, 3):
         for dgp in range(0, 3):
             print(f"DGP: {dgp} N: {N[n]}")
             res = torch.load(f"../results/res_{dgp}_{n}_{p}.pt")
-            # rm = res.mean(dim=1)
+            rm = res.mean(dim=1)
 
-            rm = res.median(dim=1)[0]
+            # rm = res.median(dim=1)[0]
             rl = res.quantile(0.025, dim=1)
             ru = res.quantile(0.975, dim=1)
             for j in [0, 4, 2, 1, 5, 3, 6]:

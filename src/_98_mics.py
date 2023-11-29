@@ -33,8 +33,8 @@ for l in range(1, LS+1):
     temp = torch.transpose(temp, 0, 1)
     res.append(temp)
 
-r0 = torch.vstack([r[0, :, 0] for r in res])
-r1 = torch.vstack([r[1, :, 0] for r in res])
+r0 = torch.vstack([r[0, :, 4] for r in res])
+r1 = torch.vstack([r[1, :, 4] for r in res])
 
 plt.boxplot(r0.t().detach().numpy())
 plt.boxplot(r1.t().detach().numpy())
@@ -43,9 +43,6 @@ plt.show()
 
 
 means = torch.stack([torch.mean(i, dim=1) for i in res])
-
-
-
 
 means = torch.stack([torch.mean(i, dim=1) for i in res])
 means
@@ -61,4 +58,58 @@ axs[0].legend(["TB-D", "TB-F"])
 plt.show()
 
 
+# runtime for methods as n increases
+DGP=0
+NS = [500, 1000, 1500, 2000, 2500, 3500, 5000, 7500, 10000, 12500, 15000, 20000]
+RUNS = 10
+P = 10
 
+def run_experiment(seed, n):
+    print(f"Experiment {seed}")
+    dat = generate_data(n, P, seed=seed, dgp=DGP)
+    
+    f0 = LogisticVI(dat, method=0, intercept=False)
+    f1 = LogisticVI(dat, method=1, intercept=False)
+    f2 = LogisticVI(dat, method=2, intercept=False)
+    f3 = LogisticVI(dat, method=3, intercept=False)
+    
+    f0.fit()
+    f1.fit() 
+    f2.fit()
+    f3.fit()
+
+    return torch.tensor([evaluate_method(f0, dat), 
+                         evaluate_method(f1, dat), 
+                         evaluate_method(f2, dat),
+                         evaluate_method(f3, dat)])
+
+
+res = []
+
+for n in NS:
+    temp = Parallel(n_jobs=-2)(delayed(run_experiment)(i, n) for i in range(1, RUNS+1))
+    temp = torch.stack(temp)
+    temp = torch.transpose(temp, 0, 1)
+    res.append(temp)
+
+torch.save(res, "../results/runtime.pt")
+
+r0 = torch.vstack([r[0, :, 4] for r in res])
+r1 = torch.vstack([r[1, :, 4] for r in res])
+r2 = torch.vstack([r[2, :, 4] for r in res])
+r3 = torch.vstack([r[3, :, 4] for r in res])
+
+NS
+"  ".join([f"{i:.3f}" for i in r0.median(1)[0]])
+"  ".join([f"{i:.3f}" for i in r1.median(1)[0]])
+"  ".join([f"{i:.3f}" for i in r2.median(1)[0]])
+"  ".join([f"{i:.3f}" for i in r3.median(1)[0]])
+
+
+plt.plot(r0.mean(1).detach().numpy())
+plt.plot(r1.mean(1).detach().numpy())
+plt.plot(r2.mean(1).detach().numpy())
+plt.plot(r3.mean(1).detach().numpy())
+plt.legend(["TB-D", "TB-F", "JJ-D", "JJ-F"])
+# plt.yscale("log")
+plt.show()
