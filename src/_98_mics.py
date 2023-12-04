@@ -23,7 +23,7 @@ def run_experiment(seed, l):
     f0.fit()
     f1.fit() 
 
-    return torch.tensor([evaluate_method(f0, dat), evaluate_method(f1, dat)])
+    return torch.tensor([f0.ELBO(), f1.ELBO()])
 
 res = []
 
@@ -33,8 +33,8 @@ for l in range(1, LS+1):
     temp = torch.transpose(temp, 0, 1)
     res.append(temp)
 
-r0 = torch.vstack([r[0, :, 4] for r in res])
-r1 = torch.vstack([r[1, :, 4] for r in res])
+r0 = torch.vstack([r[0, :] for r in res])
+r1 = torch.vstack([r[1, :] for r in res])
 
 plt.boxplot(r0.t().detach().numpy())
 plt.boxplot(r1.t().detach().numpy())
