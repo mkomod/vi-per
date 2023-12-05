@@ -1,5 +1,6 @@
 import math
 import time
+import tqdm
 
 import gpytorch
 import torch
@@ -11,7 +12,7 @@ from torch.utils.data import TensorDataset, DataLoader
 class LogitLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
     has_analytic_marginal = False
 
-    def __init__(self, l_max=12.0):
+    def __init__(self, l_max=12.0, ):
         self.l_max = l_max
         self.l = torch.arange(1.0, self.l_max*2, 1.0, requires_grad=False)
         return super().__init__()
@@ -27,49 +28,64 @@ class LogitLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
         M = function_dist.mean.view(-1, 1)
         S = function_dist.stddev.view(-1, 1)
         V = S**2
+
+        M_S = M / S
+        ML = M * self.l
+        SL = S * self.l
+        VL = 0.5 * V * (self.l ** 2)
         
-        res =  \
-            torch.dot(y, M.squeeze()) - \
-            torch.sum(
-                S / math.sqrt(2 * torch.pi) * torch.exp(- 0.5 * M**2 / V) + \
-                M * ndtr(M / S)
-            ) - \
-            torch.sum(
-                (-1.0)**(self.l - 1.0) / self.l * (
-                    torch.exp( M * self.l + 0.5 * V * (self.l ** 2) + log_ndtr(-M / S - S * self.l)) + \
-                    torch.exp(-M * self.l + 0.5 * V * (self.l ** 2) + log_ndtr( M / S - S * self.l))
-                )
+        y_M = torch.dot(y, M.squeeze())
+        normal_term = torch.sum(S / math.sqrt(2 * torch.pi) * torch.exp(-0.5 * M**2 / V) + M * ndtr(M_S))
+        series_term = torch.sum(
+            (-1.0)**(self.l - 1.0) / self.l * (
+                torch.exp(ML + VL + log_ndtr(-M_S - SL)) + torch.exp(-ML + VL + log_ndtr(M_S - SL))
             )
+        )
+
+        return y_M - normal_term - series_term
+
+
+class PGLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
+    # contribution to Eqn (10) in Reference [1].
+    def expected_log_prob(self, target, input, *args, **kwargs):
+        mean, variance = input.mean, input.variance
+        # Compute the expectation E[f_i^2]
+        raw_second_moment = variance + mean.pow(2)
+
+        # Translate targets to be -1, 1
+        target = target.to(mean.dtype).mul(2.).sub(1.)
+
+        # We detach the following variable since we do not want
+        # to differentiate through the closed-form PG update.
+        c = raw_second_moment.detach().sqrt()
+        # Compute mean of PG auxiliary variable omega: 0.5 * Expectation[omega]
+        # See Eqn (11) and Appendix A2 and A3 in Reference [1] for details.
+        half_omega = 0.25 * torch.tanh(0.5 * c) / c
+
+        # Expected log likelihood
+        res = 0.5 * target * mean - half_omega * raw_second_moment
+        # Sum over data points in mini-batch
+        res = res.sum(dim=-1)
 
         return res
 
+    # define the likelihood
+    def forward(self, function_samples):
+        return torch.distributions.Bernoulli(logits=function_samples)
 
-class ApproxGPModel(gpytorch.models.ApproximateGP):
-    def __init__(self, inducing_points, variational_distribution=None, variational_strategy=None, 
-            mean_module=None, covar_module=None):
 
-        if variational_distribution is None:
-            # variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(inducing_points.size(0))
-            variational_distribution = gpytorch.variational.MeanFieldVariationalDistribution(inducing_points.size(0))
+class GPModel(gpytorch.models.ApproximateGP):
+    def __init__(self, inducing_points):
+        variational_distribution = gpytorch.variational.NaturalVariationalDistribution(inducing_points.size(0))
+        # variational_distribution = gpytorch.variational.TrilNaturalVariationalDistribution(inducing_points.size(0))
         
-        if variational_strategy is None:
-            variational_strat = gpytorch.variational.VariationalStrategy(
-                self, inducing_points, variational_distribution, learn_inducing_locations=True
-            )
-
-        super(ApproxGPModel, self).__init__(variational_strat)
-
-        if mean_module is None:
-            # self.mean_module = gpytorch.means.ConstantMean()
-            self.mean_module = gpytorch.means.LinearMean(inducing_points.size(1))
-        else:
-            self.mean_module = mean_module
+        variational_strategy = gpytorch.variational.VariationalStrategy(
+            self, inducing_points, variational_distribution, learn_inducing_locations=True
+        )
         
-        if covar_module is None:
-            # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(inducing_points.size(1)))
-        else:
-            self.covar_module = covar_module
+        super(GPModel, self).__init__(variational_strategy)
+        self.mean_module = gpytorch.means.LinearMean(inducing_points.size(1))
+        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(inducing_points.size(1)))
 
     def forward(self, x):
         mean_x = self.mean_module(x)
@@ -78,9 +94,9 @@ class ApproxGPModel(gpytorch.models.ApproximateGP):
 
 
 class LogisticGPVI():
-    def __init__(self, y, X, likelihood=None, model=None, l_max=12.0, n_inducing=100, 
-            n_iter=250, lr=0.1, thresh=1e-4, num_likelihood_samples=1000, 
-            seed=1, verbose=True, use_loader=False, batch_size=2048):
+    def __init__(self, y, X, likelihood=None, model=None, l_max=12.0, n_inducing=30, 
+            n_iter=100, lr=0.1, thresh=1e-4, num_likelihood_samples=1000, 
+            seed=1, verbose=True, use_loader=False, batches=100):
         # data
         self.X = X
         self.n = self.X.size()[0]
@@ -89,8 +105,15 @@ class LogisticGPVI():
         self.dataset = TensorDataset(X, y)
 
         # data loader
-        self.batch_size = batch_size if use_loader else len(self.dataset)
-        self.loader = DataLoader(self.dataset, batch_size=self.batch_size, shuffle=use_loader, num_workers=6)
+        self.batch_size = self.n // batches if use_loader else len(self.dataset)
+        if use_loader:
+            self.loader = DataLoader(self.dataset, batch_size=self.batch_size, 
+                shuffle=use_loader, drop_last=use_loader, pin_memory=True, 
+                num_workers=2, persistent_workers=True)
+        else:
+            self.loader = DataLoader(self.dataset, batch_size=self.batch_size, 
+                shuffle=False, drop_last=False, pin_memory=True, 
+                num_workers=0)
 
         # optimization parameters
         self.n_iter = n_iter
@@ -115,7 +138,8 @@ class LogisticGPVI():
         if model is None:
             self.n_inducing = n_inducing
             self.inducing_points = torch.randn(self.n_inducing, self.p)
-            self.model = ApproxGPModel(self.inducing_points)
+            self.model = GPModel(inducing_points=self.inducing_points)
+            self.model.covar_module.base_kernel.lengthscale = torch.ones(self.p) * 0.2
         else:
             self.model = model
 
@@ -127,8 +151,10 @@ class LogisticGPVI():
         self.model.train()
         self.likelihood.train()
 
-        optimizer = torch.optim.Adam(
-            [{ 'params': self.model.parameters() }, 
+        variational_ngd_optimizer = gpytorch.optim.NGD(self.model.variational_parameters(), num_data=self.y.size(0), lr=self.lr)
+
+        hyperparameter_optimizer = torch.optim.Adam(
+            [{ 'params': self.model.hyperparameters() }, 
              { 'params': self.likelihood.parameters() }], 
              lr=self.lr
         )
@@ -137,23 +163,30 @@ class LogisticGPVI():
         mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.model, num_data=self.n)
 
         # optimize
-        for i in range(self.n_iter):
-            for X_batch, y_batch in self.loader:
-                optimizer.zero_grad()
+        epoch_iter = tqdm.tqdm(range(self.n_iter), disable=not self.verbose)
+        ll = [] 
+        for i in epoch_iter:
+            batch_iter = tqdm.tqdm(self.loader, disable=not self.verbose)
+
+            for X_batch, y_batch in batch_iter:
+                variational_ngd_optimizer.zero_grad()
+                hyperparameter_optimizer.zero_grad()
                 output = self.model(X_batch)
                 loss = -mll(output, y_batch)
-                loss.backward()
-                optimizer.step()
+
+                epoch_iter.set_postfix(loss=loss.item())
                 self.loss.append(loss.item())
 
-            if (i % 10 == 0):
-                if self.verbose or verbose:
-                    with torch.no_grad():
-                        ll = -mll(self.model(self.X), self.y)
-                        print(f"Iter {i}/{self.n_iter} - Loss: {ll.item():.3f}")
+                loss.backward()
+                variational_ngd_optimizer.step()
+                hyperparameter_optimizer.step()
 
-            if (i > 2) and ((abs(self.loss[-1] - self.loss[-2]) / self.loss[-2]) < self.thresh):
-                break
+            with torch.no_grad():
+                l = -mll(self.model(self.X), self.y) 
+                ll.append(l.item())
+
+                if i > 1 and ((abs(ll[-1] - ll[-2]) / abs(ll[-2])) < self.thresh):
+                    break
 
         self.runtime = time.time() - start_time 
 
