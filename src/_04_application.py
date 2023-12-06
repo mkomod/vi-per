@@ -11,8 +11,8 @@ datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
 niters = [200, 200, 100, 20]
 use_loader = [False, False, True, True]
 
-RUNS = 50
-CPUS = 25
+RUNS = 100
+CPUS = -2
 
 
 for dataset, niter, loader in zip(datasets, niters, use_loader):
