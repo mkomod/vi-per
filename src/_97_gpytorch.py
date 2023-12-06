@@ -219,6 +219,23 @@ class LogisticGPVI():
             
             return -mll(output, self.y)
 
+    def neg_log_likelihood(self, X, y):
+        """ compute the negative log likelihood, want to minimize this"""
+        if X is None or y is None:
+            X = self.X
+            y = self.y
+
+        self.model.eval()
+        self.likelihood.eval()
+
+        with torch.no_grad(), \
+            gpytorch.settings.fast_pred_var(), \
+            gpytorch.settings.num_likelihood_samples(self.num_likelihood_samples):
+
+            preds = self.likelihood(self.model(X))
+            p = preds.probs if preds.probs.dim() == 1 else preds.probs.mean(dim=0)
+            return - torch.sum(y * torch.log(p) + (1 - y) * torch.log(1 - p))
+
 
     def sample(self, X, n_samples=1000):
         self.model.eval()

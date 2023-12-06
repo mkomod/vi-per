@@ -111,6 +111,6 @@ def evaluate_method_application(func, X_test, y_test):
     lower, upper = func.credible_intervals(X_test)
     ci_width = (upper - lower).mean().item()
 
-    return func.runtime, auc, ci_width
+    return func.runtime, auc, ci_width, func.neg_log_likelihood().item(), func.neg_log_likelihood(X_test, y_test)
 
 
