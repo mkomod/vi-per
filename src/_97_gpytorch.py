@@ -234,10 +234,10 @@ class LogisticGPVI():
 
             preds = self.likelihood(self.model(X))
             p = preds.probs if preds.probs.dim() == 1 else preds.probs.mean(dim=0)
-            
+
             # ensure that p is not 0 or 1 to avoid nan
-            p[p == 0] = 1e-10
-            p[p == 1] = 1 - 1e-10
+            p[p == 0] = 1e-7
+            p[p == 1] = 1 - 1e-7
 
             return - torch.sum(y * torch.log(p) + (1 - y) * torch.log(1 - p))
 
