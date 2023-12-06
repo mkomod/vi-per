@@ -219,7 +219,7 @@ class LogisticGPVI():
             
             return -mll(output, self.y)
 
-    def neg_log_likelihood(self, X, y):
+    def neg_log_likelihood(self, X=None, y=None):
         """ compute the negative log likelihood, want to minimize this"""
         if X is None or y is None:
             X = self.X
