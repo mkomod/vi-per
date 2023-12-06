@@ -12,12 +12,13 @@ niters = [200, 200, 100, 20]
 use_loader = [False, False, True, True]
 
 RUNS = 50
+CPUS = 25
 
 
 for dataset, niter, loader in zip(datasets, niters, use_loader):
     y, X, y_test, X_test = process_dataset(dataset)
 
-    res = Parallel(n_jobs=1)(delayed(analyze_dataset)(
+    res = Parallel(n_jobs=CPUS)(delayed(analyze_dataset)(
             i, y, X, y_test, X_test, n_iter=niter, use_loader=loader
         ) for i in range(1, RUNS+1))
 
