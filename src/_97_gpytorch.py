@@ -109,7 +109,7 @@ class LogisticGPVI():
         if use_loader:
             self.loader = DataLoader(self.dataset, batch_size=self.batch_size, 
                 shuffle=use_loader, drop_last=use_loader, pin_memory=True, 
-                num_workers=2, persistent_workers=True)
+                num_workers=0, persistent_workers=False)
         else:
             self.loader = DataLoader(self.dataset, batch_size=self.batch_size, 
                 shuffle=False, drop_last=False, pin_memory=True, 
