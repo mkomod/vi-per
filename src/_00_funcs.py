@@ -94,7 +94,10 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed)
     f1.fit()
 
-    return torch.tensor([evaluate_method(f0, X_test, y_test), evaluate_method(f1, X_test, y_test)])
+    return torch.tensor([
+        evaluate_method_application(f0, X_test, y_test), 
+        evaluate_method_application(f1, X_test, y_test)
+    ])
 
 
 
