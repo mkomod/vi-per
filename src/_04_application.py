@@ -7,9 +7,13 @@ from joblib import Parallel, delayed
 from _00_funcs import process_dataset, evaluate_method_application, analyze_dataset
 
 
-datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
-niters = [200, 200, 100, 20]
-use_loader = [False, False, True, True]
+# datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
+# niters = [200, 200, 100, 20]
+# use_loader = [False, False, True, True]
+
+datasets = ["breast-cancer", "diabetes_scale"]
+niters = [200, 200]
+use_loader = [False, False]
 
 RUNS = 100
 CPUS = -2
