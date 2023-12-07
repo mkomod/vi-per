@@ -46,11 +46,6 @@ def process_dataset(dataset_name, standardize=True):
     X = torch.tensor(X, dtype=torch.float)
     y = torch.tensor(y, dtype=torch.float)
 
-    if standardize:
-        Xmean = X.mean(dim=0)
-        Xstd = X.std(dim=0)
-        X = (X - Xmean) / Xstd
-
     # ensure two classes are 0 and 1
     classes = torch.unique(y)
     y[y == classes[0]] = 0
@@ -58,19 +53,34 @@ def process_dataset(dataset_name, standardize=True):
 
     X_test, y_test = data.get_test()
     
+
     if X_test is None:
-        X_test = X
-        y_test = y
+        # take 10% of training data as test data
+        idx = torch.ones(X.size()[0], dtype=torch.bool)
+        id0 = torch.randperm(X.size()[0])
+        id0 = id0[:int(0.1 * X.size()[0])]
+        idx[id0] = False
+
+        X_test = X[torch.logical_not(idx)]
+        y_test = y[torch.logical_not(idx)]
+
+        X = X[idx]
+        y = y[idx]
     else:
         X_test = X_test.todense()
         X_test = torch.tensor(X_test, dtype=torch.float)
         y_test = torch.tensor(y_test, dtype=torch.float)
 
-        if standardize:
-            X_test = (X_test - Xmean) / Xstd
-
         y_test[y_test == classes[0]] = 0
         y_test[y_test == classes[1]] = 1
+
+
+    if standardize:
+        Xmean = X.mean(dim=0)
+        Xstd = X.std(dim=0)
+        X = (X - Xmean) / Xstd
+        X_test = (X_test - Xmean) / Xstd
+
 
     if X_test.size()[0] > 5000:
         # randomly select 5000 test points

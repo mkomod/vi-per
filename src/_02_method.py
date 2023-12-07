@@ -501,6 +501,25 @@ class LogisticVI:
         else:
             raise ValueError("Method not recognized")
 
+    def _ELBO_MC(self):
+        if self.method == 0 or self.method == 2 or self.method == 4:
+            return ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
+        elif self.method == 1 or self.method == 3 or self.method == 5:
+            return ELBO_MC_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, self.n_samples)
+        else:
+            raise ValueError("Method not recognized")
+
+    def neg_log_likelihood(self, n_samples=1000):
+        if self.intercept:
+            X = torch.cat((torch.ones(X.size()[0], 1), X), 1)
+
+        M = self.sample(n_samples=n_samples)
+        p = torch.mean(torch.sigmoid(X @ M), 0)
+
+        p[p == 0] = 1e-7
+        p[p == 1] = 1 - 1e-7
+
+        return -torch.sum(self.y * torch.log(p) + (1 - self.y) * torch.log(1 - p))
 
     def _fit_Jak(self):
         """
