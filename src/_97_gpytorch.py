@@ -219,6 +219,46 @@ class LogisticGPVI():
             
             return -mll(output, self.y)
 
+    def log_marginal(self, X=None, y=None):
+        """ compute the negative log marginal likelihood, want to minimize this"""
+        if X is None or y is None:
+            X = self.X
+            y = self.y
+            
+        self.model.eval()
+        self.likelihood.eval()
+        
+        lml = self.likelihood.log_marginal(y, self.model(X))
+        return - torch.sum(lml)
+    
+     
+    def ELB0_MC(self, X=None, y=None):
+        """ compute the negative ELBO, want to minimize this"""
+        if X is None or y is None:
+            X = self.X
+            y = self.y
+            
+        self.model.eval()
+        self.likelihood.eval()
+        
+        with torch.no_grad(), \
+            gpytorch.settings.fast_pred_var(), \
+            gpytorch.settings.num_likelihood_samples(self.num_likelihood_samples):
+
+            f = self.model(X)
+            samp = f.sample(torch.Size([self.num_likelihood_samples]))
+            p = torch.sigmoid(samp)
+            
+            # ensure that p is not 0 or 1 to avoid nan
+            p[p == 0] = 1e-7
+            p[p == 1] = 1 - 1e-7
+
+            ll = - torch.sum(y * torch.log(p) + (1 - y) * torch.log(1 - p), dim=1)
+            ll = ll.mean(dim=0)
+
+            return ll
+     
+
     def neg_log_likelihood(self, X=None, y=None):
         """ compute the negative log likelihood, want to minimize this"""
         if X is None or y is None:
