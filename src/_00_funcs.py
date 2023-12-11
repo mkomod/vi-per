@@ -127,3 +127,12 @@ def evaluate_method_application(func, X_test, y_test):
             func.ELB0_MC().item(), func.ELB0_MC(X_test, y_test).item()
 
 
+def print_results(res):
+    
+    for i in range(res.shape[0]):
+        mean, sd = res[i].mean(dim=0), res[i].std(dim=0)
+        l = ""
+        for m, s in zip(mean, sd):
+            l += f"{m:.2f} ({s:.2f}) \t "
+            
+        print(l[:-2])

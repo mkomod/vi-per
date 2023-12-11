@@ -210,6 +210,7 @@ class LogisticGPVI():
 
 
     def ELBO(self):
+        """ Evaluate the evidence lower bound, we want to maximize this """
         self.model.eval()
         self.likelihood.eval()
 
@@ -217,10 +218,10 @@ class LogisticGPVI():
             mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.model, num_data=self.n)
             output = self.model(self.X)
             
-            return -mll(output, self.y)
+            return mll(output, self.y)
 
     def log_marginal(self, X=None, y=None):
-        """ compute the negative log marginal likelihood, want to minimize this"""
+        """ Compute the negative log marginal likelihood, want to minimize this"""
         if X is None or y is None:
             X = self.X
             y = self.y
@@ -256,7 +257,7 @@ class LogisticGPVI():
             ll = - torch.sum(y * torch.log(p) + (1 - y) * torch.log(1 - p), dim=1)
             ll = ll.mean(dim=0)
 
-            return ll
+            return ll - self.model.variational_strategy.kl_divergence()
      
 
     def neg_log_likelihood(self, X=None, y=None):
