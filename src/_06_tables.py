@@ -1,4 +1,5 @@
 import torch
+from _00_funcs import print_results
 
 N = ["500", "1000", "10000", "20000"]
 P = ["5", "10", "25"]
@@ -26,3 +27,16 @@ for p in range(0, 3):
                 print(line)
             print()
 
+
+# print results for GP simulation
+
+
+# print the results for the real datasets
+datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
+
+for dataset in datasets:
+    res = torch.load(f"../results/real_data/{dataset}.pt")
+    print("\n" + dataset)
+    # format nicely (auc, runtime, ci)
+
+    print_results(res)
