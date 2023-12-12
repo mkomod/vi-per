@@ -35,7 +35,12 @@ def evaluate_method(fit, dat, method="vi"):
 
     cred_size = torch.mean(torch.diff(creds))
 
-    return mse.compute().item(), auc.compute().item(), cov, cred_size, fit.runtime
+    if method == "vi":
+        elbo_mc = fit._ELBO_MC().item()
+    else:
+        elbo_mc = 0.0
+
+    return mse.compute().item(), auc.compute().item(), cov, cred_size, fit.runtime, elbo_mc
 
 
 def process_dataset(dataset_name, standardize=True):

@@ -263,29 +263,21 @@ def ELBO_MC_mvn(m, u, y, X, mu, Sig, n_samples=1000):
     return ELL_MC_mvn(m, S, y, X, n_samples) + KL_mvn(m, S, mu, Sig)
 
 
-def ELBO_Jak(m, u, t, y, X, mu, sig):
+def ELBO_Jak(m, s, t, y, X, mu, sig):
     """
     Compute the negative of the ELBO using the bound introduced by
     Jaakkola and Jordan (2000)
     :return: ELBO
     """
-    s = torch.exp(u)
     return ELL_Jak(m, s, t, y, X) + KL(m, s, mu, sig)
 
 
-def ELBO_Jak_mvn(m, u, t, y, X, mu, Sig, cov=None):
+def ELBO_Jak_mvn(m, S, t, y, X, mu, Sig, cov=None):
     """
     Compute the negative of the ELBO using the bound introduced by
     Jaakkola and Jordan (2000)
     :return: ELBO
     """
-    # if cov is None:
-        # S = torch.inverse(torch.cov(X.t()) + torch.diag(torch.exp(u)))
-    # else:
-        # S = torch.inverse(cov + torch.diag(torch.exp(u)))
-    a_t = (torch.sigmoid(t) - 0.5) / t
-    S = torch.inverse(X.t() @ torch.diag(a_t) @ X + torch.diag(torch.exp(u)))
-
     return ELL_Jak_mvn(m, S, t, y, X) + KL_mvn(m, S, mu, Sig)
 
 
@@ -416,6 +408,8 @@ class LogisticVI:
 
             self._fit_Jak_mvn()
             self.s = torch.sqrt(torch.diag(self.S))
+            U = torch.linalg.cholesky(self.S)
+            self.u = U[torch.tril_indices(self.p, self.p, 0).tolist()]
 
         elif self.method == 4:
             if self.verbose:
@@ -491,9 +485,9 @@ class LogisticVI:
         elif self.method == 1:
             return ELBO_TB_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, self.l_terms)
         elif self.method == 2:
-            return ELBO_Jak(self.m, self.u, self.t, self.y, self.X, self.mu, self.sig)
+            return ELBO_Jak(self.m, self.s, self.t, self.y, self.X, self.mu, self.sig)
         elif self.method == 3:
-            return ELBO_Jak_mvn(self.m, self.u, self.t, self.y, self.X, self.mu, self.Sig)
+            return ELBO_Jak_mvn(self.m, self.S, self.t, self.y, self.X, self.mu, self.Sig)
         elif self.method == 4:
             return ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
         elif self.method == 5:
@@ -501,13 +495,14 @@ class LogisticVI:
         else:
             raise ValueError("Method not recognized")
 
-    def _ELBO_MC(self):
-        if self.method == 0 or self.method == 2 or self.method == 4:
-            return ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
-        elif self.method == 1 or self.method == 3 or self.method == 5:
-            return ELBO_MC_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, self.n_samples)
-        else:
-            raise ValueError("Method not recognized")
+    def _ELBO_MC(self, n_samples=10000):
+        with torch.no_grad():
+            if self.method == 0 or self.method == 2 or self.method == 4:
+                return - ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, n_samples=n_samples)
+            elif self.method == 1 or self.method == 3 or self.method == 5:
+                return - ELBO_MC_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, n_samples=n_samples)
+            else:
+                raise ValueError("Method not recognized")
 
     def neg_log_likelihood(self, n_samples=1000):
         if self.intercept:
@@ -602,9 +597,9 @@ class LogisticVI:
 
 
     def sample(self, n_samples=10000):
-        if method == 0 or method == 2 or method == 4:
+        if self.method == 0 or self.method == 2 or self.method == 4:
             mvn = dist.MultivariateNormal(self.m, torch.diag(self.s))
-        if method == 1 or method == 3 or method == 5:
+        if self.method == 1 or self.method == 3 or self.method == 5:
             mvn = dist.MultivariateNormal(self.m, self.S)
 
         samp = mvn.sample((n_samples, ))
