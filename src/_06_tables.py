@@ -32,7 +32,7 @@ for p in range(0, 3):
 
 
 # print the results for the real datasets
-datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
+datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
 
 for dataset in datasets:
     res = torch.load(f"../results/real_data/{dataset}.pt")
