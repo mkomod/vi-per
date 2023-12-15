@@ -7,7 +7,35 @@ import torch
 
 from torch.special import log_ndtr, ndtr
 from torch.utils.data import TensorDataset, DataLoader
+import torch.distributions as dist
 
+
+class LogitLikelihoodMC(gpytorch.likelihoods._OneDimensionalLikelihood):
+    has_analytic_marginal = False
+
+    def __init__(self, n_samples=1000):
+        self.n_samples = n_samples
+        return super().__init__()
+
+    def forward(self, function_samples, *args, **kwargs):
+        """ defines the liklihood function """
+        output_probs = torch.sigmoid(function_samples)
+        return torch.distributions.Bernoulli(probs=output_probs)
+
+    def expected_log_prob(self, y, function_dist, *args, **kwargs):
+        """ compute the expected log probability """
+        M = function_dist.mean.view(-1, 1)
+        S = function_dist.stddev.view(-1, 1)
+
+        norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+        samp = norm.sample((self.n_samples, ))
+        samp = M + S * samp
+
+        res =  torch.dot(y, M.squeeze()) - \
+            torch.sum(torch.mean(torch.log1p(torch.exp(samp)), 0))
+
+        return res
+ 
 
 class LogitLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
     has_analytic_marginal = False
@@ -96,7 +124,7 @@ class GPModel(gpytorch.models.ApproximateGP):
 class LogisticGPVI():
     def __init__(self, y, X, likelihood=None, model=None, l_max=12.0, n_inducing=30, 
             n_iter=100, lr=0.1, thresh=1e-4, num_likelihood_samples=1000, 
-            seed=1, verbose=True, use_loader=False, batches=100):
+            seed=1, verbose=True, use_loader=False, batches=100, num_workers=0, persistent_workers=False):
         # data
         self.X = X
         self.n = self.X.size()[0]
@@ -109,7 +137,7 @@ class LogisticGPVI():
         if use_loader:
             self.loader = DataLoader(self.dataset, batch_size=self.batch_size, 
                 shuffle=use_loader, drop_last=use_loader, pin_memory=True, 
-                num_workers=0, persistent_workers=False)
+                num_workers=num_workers, persistent_workers=persistent_workers)
         else:
             self.loader = DataLoader(self.dataset, batch_size=self.batch_size, 
                 shuffle=False, drop_last=False, pin_memory=True, 

@@ -361,8 +361,8 @@ class LogisticVI:
         start = time.time()
 
         # reset parameters
-        self.m = self.m_init.clone()
-        self.u = self.u_init.clone()
+        # self.m = self.m_init.clone()
+        # self.u = self.u_init.clone()
 
         self.m.requires_grad = True
         self.u.requires_grad = True
