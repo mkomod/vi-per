@@ -15,7 +15,7 @@ from torcheval.metrics import BinaryAUROC
 from joblib import Parallel, delayed
 
 
-from _97_gpytorch import LogisticGPVI, GPModel, LogitLikelihood, PGLikelihood
+from _97_gpytorch import LogisticGPVI, GPModel, LogitLikelihood, PGLikelihood, LogitLikelihoodMC
 
 
 
@@ -105,13 +105,19 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
                             use_loader=use_loader, batches=batches, seed=seed)
     f0.fit()
 
-    f1 = LogisticGPVI(y, X, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
+    
+    f1 = LogisticGPVI(y, X, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed)
     f1.fit()
 
+    f2 = LogisticGPVI(y, X, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed)
+    f2.fit()
+
     return torch.tensor([
         evaluate_method_application(f0, X_test, y_test), 
-        evaluate_method_application(f1, X_test, y_test)
+        evaluate_method_application(f1, X_test, y_test),
+        evaluate_method_application(f2, X_test, y_test)
     ])
 
 
