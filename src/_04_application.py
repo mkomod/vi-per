@@ -8,7 +8,7 @@ from _00_funcs import process_dataset, evaluate_method_application, analyze_data
 
 
 datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
-niters = [50, 50, 50, 50, 50, 50, 50, 50]
+niters = [100, 100, 100, 100, 100, 100, 100, 100]
 use_loader = [True, True, True, True, True, True, True, True]
 
 
@@ -28,7 +28,7 @@ for dataset, niter, loader in zip(datasets, niters, use_loader):
     y, X, y_test, X_test = process_dataset(dataset)
 
     res = Parallel(n_jobs=CPUS)(delayed(analyze_dataset)(
-            i, y, X, y_test, X_test, n_iter=niter, use_loader=loader,
+            i, y, X, y_test, X_test, n_iter=niter, use_loader=loader, lr=0.03
         ) for i in range(1, RUNS+1))
 
     res = torch.stack(res)

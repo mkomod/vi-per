@@ -106,7 +106,7 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
     f0.fit()
 
     
-    f1 = LogisticGPVI(y, X, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
+    f1 = LogisticGPVI(y, X, likelihood=LogitLikelihoodMC(250), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=lr)
     f1.fit()
 
