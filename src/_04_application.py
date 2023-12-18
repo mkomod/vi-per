@@ -8,8 +8,9 @@ from _00_funcs import process_dataset, evaluate_method_application, analyze_data
 
 
 datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
-niters = [100, 100, 100, 100, 100, 100, 100, 100]
-use_loader = [True, True, True, True, True, True, True, True]
+niters = [50, 50, 50, 50, 50, 50, 50, 50]
+# use_loader = [True, True, True, True, True, True, True, True]
+use_loader = [False, False, False, False, False, False, False, False]
 
 
 # datasets = ["splice", "australian", "german.numer", "fourclass", "heart"]
