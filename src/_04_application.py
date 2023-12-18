@@ -11,6 +11,11 @@ datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australia
 niters = [50, 50, 50, 50, 50, 50, 50, 50]
 use_loader = [True, True, True, True, True, True, True, True]
 
+
+# datasets = ["splice", "australian", "german.numer", "fourclass", "heart"]
+# niters = [50, 50, 50, 50, 50]
+# use_loader = [True, True, True, True, True]
+
 # datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
 # niters = [200, 200, 50, 50]
 # use_loader = [False, False, True, True]
@@ -29,3 +34,5 @@ for dataset, niter, loader in zip(datasets, niters, use_loader):
     res = torch.stack(res)
     res = torch.transpose(res, 0, 1)
     torch.save(res, f"../results/real_data/{dataset}.pt")
+
+
