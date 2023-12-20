@@ -23,7 +23,7 @@ def run_experiment(seed, l):
     f0.fit()
     f1.fit() 
 
-    return torch.tensor([f0.ELBO(), f1.ELBO()])
+    return torch.tensor([f0._ELBO_MC(), f1._ELBO_MC()])
 
 res = []
 
@@ -36,26 +36,13 @@ for l in range(1, LS+1):
 r0 = torch.vstack([r[0, :] for r in res])
 r1 = torch.vstack([r[1, :] for r in res])
 
-plt.boxplot(r0.t().detach().numpy())
-plt.boxplot(r1.t().detach().numpy())
-plt.yscale("log")
+fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+
+ax[0].boxplot(r0.t().detach().numpy(), showfliers=False, labels=list(range(1, LS+1)))
+ax[1].boxplot(r1.t().detach().numpy(), showfliers=False, labels=list(range(1, LS+1)))
+
 plt.show()
 
-
-means = torch.stack([torch.mean(i, dim=1) for i in res])
-
-means = torch.stack([torch.mean(i, dim=1) for i in res])
-means
-
-fig, axs = plt.subplots(1, 5, figsize=(15, 10))
-x_axis = range(1, LS)
-
-for i in range(5):
-    axs[i].plot(x_axis, means[:, 0, i].detach().numpy())
-    axs[i].plot(x_axis, means[:, 1, i].detach().numpy())
-
-axs[0].legend(["TB-D", "TB-F"])
-plt.show()
 
 
 # runtime for methods as n increases

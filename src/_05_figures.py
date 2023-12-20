@@ -119,17 +119,17 @@ ls = ls.detach().numpy()
 
 # plot the results
 fig, ax = plt.subplots(1, 3, figsize=(15*1.2, 3.5*1.2))
-ax[0].plot(ms, res0[0], color="tab:green")
 ax[0].plot(ms, res0[1], color="tab:blue")
-ax[0].plot(ms, res0[2], color="tab:orange", linestyle="--")
+ax[0].plot(ms, res0[2], color="tab:green", linestyle="--")
+ax[0].plot(ms, res0[0], color="tab:orange")
 ax[0].grid(alpha=0.2)
 ax[0].set_title("(a)  $\\tau = 2.0$", loc="left")
 ax[0].set_xlabel("$\\vartheta$")
-ax[0].legend(("Jaakkola and Jordan (1999)", "Proposed bound", "Monte-Carlo Estimate"))
+ax[0].legend(("Proposed bound", "Monte-Carlo Estimate", "Jaakkola and Jordan (1999)"))
 
-ax[1].plot(ss, res1[0], color="tab:green")
 ax[1].plot(ss, res1[1], color="tab:blue")
-ax[1].plot(ss, res1[2], color="tab:orange", linestyle="--")
+ax[1].plot(ss, res1[2], color="tab:green", linestyle="--")
+ax[1].plot(ss, res1[0], color="tab:orange")
 ax[1].grid(alpha=0.2)
 ax[1].set_title("(b)  $\\vartheta = 1.0$", loc="left")
 ax[1].set_xlabel("$\\tau$")
@@ -148,8 +148,8 @@ ax[2].set_xlabel("$\\vartheta$")
 ax[2].set_ylabel("$\\tau$")
 ax[2].set_title("(c) Value of $l$ such that the relative error is below 1%", loc="left")
 
-# plt.show()
-plt.savefig("/home/michael/proj/papers/logistic_vb/figures/error.pdf")
+plt.show()
+plt.savefig("/home/michael/proj/papers/logistic_vb/figures/error.pdf", bbox_inches="tight")
 
 
 # ---------------------------

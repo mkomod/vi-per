@@ -77,7 +77,7 @@ for dataset in datasets:
         line_comp = [] 
         for i in metric_order:
             if i != 0:
-                line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  3)}, {sf(ru[j, i],  3)})")
+                line_comp.append(f"{sf(rm[j, i], 4)} ({sf(rl[j, i],  4)}, {sf(ru[j, i],  4)})")
             else:
                 line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
         line += " & ".join(line_comp) + " \\\\"

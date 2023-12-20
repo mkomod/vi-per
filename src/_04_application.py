@@ -22,7 +22,7 @@ use_loader = [False, False, False, False, False, False, False, False]
 # niters = [200, 200, 50, 50]
 # use_loader = [False, False, True, True]
 
-RUNS = 30
+RUNS = 100
 CPUS = -2
 
 

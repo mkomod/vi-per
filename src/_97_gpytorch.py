@@ -122,9 +122,9 @@ class GPModel(gpytorch.models.ApproximateGP):
 
 
 class LogisticGPVI():
-    def __init__(self, y, X, likelihood=None, model=None, l_max=12.0, n_inducing=30, 
-            n_iter=100, lr=0.1, thresh=1e-4, num_likelihood_samples=1000, 
-            seed=1, verbose=True, use_loader=False, batches=100, num_workers=0, persistent_workers=False):
+    def __init__(self, y, X, likelihood=None, model=None, n_inducing=30, n_iter=100, 
+        lr=0.1, thresh=1e-4, l_scale=0.5, l_max=12.0, num_likelihood_samples=1000, seed=1, 
+        verbose=True, use_loader=False, batches=100, num_workers=0, persistent_workers=False):
         # data
         self.X = X
         self.n = self.X.size()[0]
@@ -147,6 +147,7 @@ class LogisticGPVI():
         self.n_iter = n_iter
         self.thresh = thresh
         self.lr = lr
+        self.l_scale = l_scale
         self.loss = []
 
         # general parameters
@@ -167,7 +168,7 @@ class LogisticGPVI():
             self.n_inducing = n_inducing
             self.inducing_points = torch.randn(self.n_inducing, self.p)
             self.model = GPModel(inducing_points=self.inducing_points)
-            self.model.covar_module.base_kernel.lengthscale = torch.ones(self.p) * 0.2
+            self.model.covar_module.base_kernel.lengthscale = torch.ones(self.p) * self.l_scale
         else:
             self.model = model
 
@@ -261,8 +262,8 @@ class LogisticGPVI():
         return - torch.sum(lml)
     
      
-    def ELB0_MC(self, X=None, y=None):
-        """ compute the negative ELBO, want to minimize this"""
+    def ELB0_MC(self, X=None, y=None, n_samples=1000):
+        """ compute the ELBO with monte carlo, want to maximize this"""
         if X is None or y is None:
             X = self.X
             y = self.y
@@ -275,17 +276,18 @@ class LogisticGPVI():
             gpytorch.settings.num_likelihood_samples(self.num_likelihood_samples):
 
             f = self.model(X)
-            samp = f.sample(torch.Size([self.num_likelihood_samples]))
-            p = torch.sigmoid(samp)
-            
-            # ensure that p is not 0 or 1 to avoid nan
-            p[p == 0] = 1e-7
-            p[p == 1] = 1 - 1e-7
 
-            ll = - torch.sum(y * torch.log(p) + (1 - y) * torch.log(1 - p), dim=1)
-            ll = ll.mean(dim=0)
+            M = f.mean.view(-1, 1)
+            S = f.stddev.view(-1, 1)
 
-            return ll - self.model.variational_strategy.kl_divergence()
+            norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
+            samp = norm.sample((n_samples, ))
+            samp = M + S * samp
+
+            res =  torch.dot(y, M.squeeze()) - \
+                torch.sum(torch.mean(torch.log1p(torch.exp(samp)), 0))
+
+            return -res - self.model.variational_strategy.kl_divergence()
      
 
     def neg_log_likelihood(self, X=None, y=None):
