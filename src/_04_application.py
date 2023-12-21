@@ -8,23 +8,11 @@ from _00_funcs import process_dataset, evaluate_method_application, analyze_data
 
 
 datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
-# niters = [50, 50, 50, 50, 50, 50, 50, 50]
-niters = [300, 300, 300, 300, 300, 300, 300, 300]
-# use_loader = [True, True, True, True, True, True, True, True]
+niters = [500, 500, 500, 500, 500, 500, 500, 500]
 use_loader = [False, False, False, False, False, False, False, False]
-
-
-# datasets = ["splice", "australian", "german.numer", "fourclass", "heart"]
-# niters = [50, 50, 50, 50, 50]
-# use_loader = [True, True, True, True, True]
-
-# datasets = ["breast-cancer", "diabetes_scale", "phishing", "svmguide1"]
-# niters = [200, 200, 50, 50]
-# use_loader = [False, False, True, True]
 
 RUNS = 100
 CPUS = -2
-
 
 for dataset, niter, loader in zip(datasets, niters, use_loader):
     y, X, y_test, X_test = process_dataset(dataset)
