@@ -44,7 +44,6 @@ ax[1].boxplot(r1.t().detach().numpy(), showfliers=False, labels=list(range(1, LS
 plt.show()
 
 
-
 # runtime for methods as n increases
 DGP=0
 NS = [500, 1000, 1500, 2000, 2500, 3500, 5000, 7500, 10000, 12500, 15000, 20000]

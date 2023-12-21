@@ -126,6 +126,7 @@ ax[0].grid(alpha=0.2)
 ax[0].set_title("(a)  $\\tau = 2.0$", loc="left")
 ax[0].set_xlabel("$\\vartheta$")
 ax[0].legend(("Proposed bound", "Monte-Carlo Estimate", "Jaakkola and Jordan (1999)"))
+ax[0].set_ylabel('Estimate of $E_{X}[\log(1 + \exp(X))]$')
 
 ax[1].plot(ss, res1[1], color="tab:blue")
 ax[1].plot(ss, res1[2], color="tab:green", linestyle="--")
@@ -133,6 +134,7 @@ ax[1].plot(ss, res1[0], color="tab:orange")
 ax[1].grid(alpha=0.2)
 ax[1].set_title("(b)  $\\vartheta = 1.0$", loc="left")
 ax[1].set_xlabel("$\\tau$")
+ax[1].set_ylabel('Estimate of $E_{X}[\log(1 + \exp(X))]$')
 
 ax[2].matshow(ls, cmap='viridis', interpolation='none', aspect="auto")
 for (i, j), z in np.ndenumerate(ls):
