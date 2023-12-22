@@ -1,2 +1,3 @@
 simulations.pbs.*
+applications.pbs.*
 del_jobs.sh
