@@ -61,7 +61,8 @@ for p in range(1, 2):
 
 
 # print the results for the real datasets
-datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
+# datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
+datasets = ["breast-cancer", "svmguide1", "splice", "fourclass", "heart"]
 metric_order = [-2, -1, 1, 2, 0]
 
 for dataset in datasets:
@@ -83,3 +84,24 @@ for dataset in datasets:
         line += " & ".join(line_comp) + " \\\\"
         print(line)
     print()
+
+
+res = torch.load("../results/gp.pt")
+
+metric_order = [-4, -3, 1, 2, 3, -2, 0]
+rm = res.median(dim=1)[0]
+rl = res.quantile(0.025, dim=1)
+ru = res.quantile(0.975, dim=1)
+for j in [0, 1, 2]:
+    line = ""
+    line_comp = [] 
+    for i in metric_order:
+        if i != 0:
+            # line_comp.append(f"{sf(rm[j, i], 3)} ({sf(sd[j, i],  2)})")
+            line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
+        else:
+            # line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(sd[j, i]))})")
+            line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
+    line += " & ".join(line_comp) + " \\\\"
+    print(line)
+print()

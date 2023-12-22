@@ -115,24 +115,28 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
     f2.fit()
 
     return torch.tensor([
-        evaluate_method_application(f0, X_test, y_test), 
-        evaluate_method_application(f1, X_test, y_test),
-        evaluate_method_application(f2, X_test, y_test)
+        evaluate_method_application(f0, X, y, X_test, y_test), 
+        evaluate_method_application(f1, X, y, X_test, y_test),
+        evaluate_method_application(f2, X, y, X_test, y_test)
     ])
 
 
 
-def evaluate_method_application(func, X_test, y_test):
+def evaluate_method_application(func, X_train, y_train, X_test, y_test):
     y_pred = func.predict(X_test)
 
     auc = BinaryAUROC()
     auc.update(y_pred, y_test)
-    auc= auc.compute().item()
+    auc_test = auc.compute().item()
+
+    auc.update(func.predict(X_train), y_train)
+    auc_train = auc.compute().item()
 
     lower, upper = func.credible_intervals(X_test)
     ci_width = (upper - lower).mean().item()
 
-    return func.runtime, auc, ci_width, \
+    return func.runtime, ci_width, \
+            auc_test, auc_train, \
             func.neg_log_likelihood().item(), func.neg_log_likelihood(X_test, y_test), \
             func.log_marginal().item(), func.log_marginal(X_test, y_test).item(), \
             func.ELB0_MC().item(), func.ELB0_MC(X_test, y_test).item()

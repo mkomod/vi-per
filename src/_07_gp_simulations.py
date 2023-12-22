@@ -32,28 +32,6 @@ def generate_data(n, seed=1):
     xs = torch.linspace(0, 5, 100).reshape(-1, 1)
     true_f = func(xs)
 
-    # x = torch.linspace(0, 5, n)
-    # func = lambda x: torch.sin(x * (0.5 * math.pi)) * 4
-    # f = func(x) + math.sqrt(0.4) * torch.randn(n)
-    # x = x.reshape(-1, 1)
-    # p = torch.sigmoid(f)
-    # y = torch.bernoulli(p)
-
-    # # split train and test
-    # idx = torch.randperm(n)
-    # n_train = int(n * 0.8)
-
-    # train_x = x[idx[:n_train]]
-    # train_y = y[idx[:n_train]]
-
-    # test_x = x[idx[n_train:]]
-    # test_y = y[idx[n_train:]]
-    # test_p = p[idx[n_train:]]
-    # test_f = f[idx[n_train:]]
-    # 
-    # test_x = test_x.reshape(-1, 1)
-    # true_f = func(test_x)
-
     return train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f
 
 
@@ -64,31 +42,35 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
     print(f"Run: {seed}")
         
     f0 = LogisticGPVI(train_y, train_x, n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, verbose=verbose, 
-                            use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
+                            use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
 
     f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.04)
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
     f1.fit()
 
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f2.fit()
 
     return torch.tensor([
-        evaluate_method_simulation(f0, test_x, test_y, test_p, test_f, xs, true_f),
-        evaluate_method_simulation(f1, test_x, test_y, test_p, test_f, xs, true_f),
-        evaluate_method_simulation(f2, test_x, test_y, test_p, test_f, xs, true_f),
+        evaluate_method_simulation(f0, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f),
+        evaluate_method_simulation(f1, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f),
+        evaluate_method_simulation(f2, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f),
     ])
 
 
 
-def evaluate_method_simulation(func, test_x, test_y, test_p, test_f, xs, true_f):
+def evaluate_method_simulation(func, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f):
     pred_y = func.predict(test_x)
 
     auc = BinaryAUROC()
-    auc.update(test_y, pred_y)
-    auc = auc.compute().item()
+    auc.update(pred_y, test_y)
+    auc_test = auc.compute().item()
+
+    pred_y_2 = func.predict(train_x)
+    auc.update(pred_y_2, train_y)
+    auc_train = auc.compute().item()
 
     lower, upper = func.credible_intervals(test_x)
     ci_width = (upper - lower).mean().item()
@@ -107,25 +89,44 @@ def evaluate_method_simulation(func, test_x, test_y, test_p, test_f, xs, true_f)
     f_pred = func.model(xs).mean
     mse = ((true_f.reshape(-1) - f_pred) ** 2).mean().item()
     
-    return func.runtime, auc, mse, ci_width, \
+    return func.runtime, mse, ci_width, \
+            auc_train, auc_test, \
             func.neg_log_likelihood().item(), func.neg_log_likelihood(test_x, test_y).item(), \
             func.log_marginal().item(),             func.log_marginal(test_x, test_y).item(), \
             func.ELB0_MC().item(),                       func.ELB0_MC(test_x, test_y).item(), \
             coverage_f.item(), coverage_p.item()
 
-CPUS = -2
+CPUS = -1
 RUNS = 100
 n = 50
 
 def run_exp(seed):
-    train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(50, seed=seed)
+    train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
     return analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
      n_iter=1000, n_inducing=50)
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
-res = torch.transpose(res, 0, 1)           
-res.mean(1)
+res = torch.transpose(res, 0, 1)
 torch.save(res, "../results/gp.pt")
 
-res.mean(1)
+# elbo train, elbo test, auc train, auc test, mse, ci width coverage, runtime
+metric_order = [-4, -3, 3, 4, 1, 2, -2, 0]
+rm = res.median(dim=1)[0]
+rl = res.quantile(0.025, dim=1)
+ru = res.quantile(0.975, dim=1)
+for j in [0, 1, 2]:
+    line = ""
+    line_comp = [] 
+    for i in metric_order:
+        if i != 0:
+            # line_comp.append(f"{sf(rm[j, i], 3)} ({sf(sd[j, i],  2)})")
+            line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
+        else:
+            # line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(sd[j, i]))})")
+            line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
+    line += " & ".join(line_comp) + " \\\\"
+    print(line)
+print()
+
+# 
