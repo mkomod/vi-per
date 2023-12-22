@@ -24,5 +24,3 @@ for dataset, niter, loader in zip(datasets, niters, use_loader):
     res = torch.stack(res)
     res = torch.transpose(res, 0, 1)
     torch.save(res, f"../results/real_data/{dataset}.pt")
-
-
