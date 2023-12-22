@@ -129,6 +129,7 @@ def evaluate_method_application(func, X_train, y_train, X_test, y_test):
     auc.update(y_pred, y_test)
     auc_test = auc.compute().item()
 
+    auc = BinaryAUROC()
     auc.update(func.predict(X_train), y_train)
     auc_train = auc.compute().item()
 
