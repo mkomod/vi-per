@@ -120,7 +120,7 @@ n = 50
 def run_exp(seed):
     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(50, seed=seed)
     return analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-     n_iter=1200, n_inducing=50)
+     n_iter=1000, n_inducing=50)
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)

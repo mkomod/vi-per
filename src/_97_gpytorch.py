@@ -287,7 +287,7 @@ class LogisticGPVI():
             res =  torch.dot(y, M.squeeze()) - \
                 torch.sum(torch.mean(torch.log1p(torch.exp(samp)), 0))
 
-            return -res - self.model.variational_strategy.kl_divergence()
+            return res - self.model.variational_strategy.kl_divergence()
      
 
     def neg_log_likelihood(self, X=None, y=None):
