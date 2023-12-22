@@ -58,21 +58,21 @@ def generate_data(n, seed=1):
 
 
 def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-        n_iter=200, n_inducing=50, thresh=1e-7, lr=0.05, verbose=False, use_loader=False, batches=20):
+        n_iter=200, n_inducing=50, thresh=1e-6, lr=0.05, verbose=False, use_loader=False, batches=20):
 
     torch.manual_seed(seed)
     print(f"Run: {seed}")
         
     f0 = LogisticGPVI(train_y, train_x, n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, verbose=verbose, 
-                            use_loader=use_loader, batches=batches, seed=seed, lr=lr)
+                            use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
     f0.fit()
 
     f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=lr)
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.04)
     f1.fit()
 
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=lr)
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
     f2.fit()
 
     return torch.tensor([
@@ -125,7 +125,7 @@ def run_exp(seed):
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
 res = torch.transpose(res, 0, 1)           
-res
+res.mean(1)
 torch.save(res, "../results/gp.pt")
 
-run_exp(1)
+res.mean(1)

@@ -102,16 +102,16 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
     print(f"Run: {seed}")
         
     f0 = LogisticGPVI(y, X, n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, verbose=verbose, 
-                            use_loader=use_loader, batches=batches, seed=seed, lr=lr)
+                            use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
     f0.fit()
 
     
     f1 = LogisticGPVI(y, X, likelihood=LogitLikelihoodMC(1000), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=lr)
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.03)
     f1.fit()
 
     f2 = LogisticGPVI(y, X, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=lr)
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
     f2.fit()
 
     return torch.tensor([
