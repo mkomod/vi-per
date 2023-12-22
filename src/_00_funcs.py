@@ -126,7 +126,7 @@ def evaluate_method_application(func, X_test, y_test):
     y_pred = func.predict(X_test)
 
     auc = BinaryAUROC()
-    auc.update(y_test, y_pred)
+    auc.update(y_pred, y_test)
     auc= auc.compute().item()
 
     lower, upper = func.credible_intervals(X_test)
