@@ -496,6 +496,7 @@ class LogisticVI:
             raise ValueError("Method not recognized")
 
     def _ELBO_MC(self, n_samples=10000):
+        """ this is the normal elbo, we want to maximize this"""
         with torch.no_grad():
             if self.method == 0 or self.method == 2 or self.method == 4:
                 return - ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, n_samples=n_samples)

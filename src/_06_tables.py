@@ -1,30 +1,6 @@
 import torch
 from _00_funcs import print_results
 
-
-def sf(x, n):
-     return '{:g}'.format(float('{:.{p}g}'.format(x, p=n)))
-
-
-def seconds_to_hms(seconds):
-    hours, remainder = divmod(seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-
-    time_components = []
-
-    if hours:
-        time_components.append("{}h".format(int(hours)))
-    if minutes:
-        time_components.append("{}m".format(int(minutes)))
-
-    time_components.append("{}s".format(sf(seconds, 2)))
-
-    # Join the components and format as a string
-    result = " ".join(time_components)
-
-    return result
-
-
 N = ["500", "1000", "10000", "20000"]
 P = ["5", "10", "25"]
 METHOD = ["TB-D", "TB-F", "JJ-D", "JJ-F", "MC-D", "MC-F", "MCMC"]

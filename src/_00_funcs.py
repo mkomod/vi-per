@@ -152,3 +152,27 @@ def print_results(res):
             l += f"{m:.2f} ({s:.2f}) \t "
             
         print(l[:-2])
+
+
+def sf(x, n):
+     return '{:g}'.format(float('{:.{p}g}'.format(x, p=n)))
+
+
+def seconds_to_hms(seconds):
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    time_components = []
+
+    if hours:
+        time_components.append("{}h".format(int(hours)))
+    if minutes:
+        time_components.append("{}m".format(int(minutes)))
+
+    time_components.append("{}s".format(sf(seconds, 2)))
+
+    # Join the components and format as a string
+    result = " ".join(time_components)
+
+    return result
+

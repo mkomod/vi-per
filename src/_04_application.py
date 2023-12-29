@@ -4,16 +4,15 @@ import dsdl
 
 from joblib import Parallel, delayed
 
-from _00_funcs import process_dataset, evaluate_method_application, analyze_dataset
+from _00_funcs import process_dataset, evaluate_method_application, analyze_dataset, sf, seconds_to_hms
 
 
 # datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
-datasets = ["breast-cancer", "svmguide1", "splice", "fourclass", "heart"]
-# niters = [1500] * len(datasets)
-niters = [100] * len(datasets)
+datasets = ["breast-cancer", "svmguide1", "splice", "fourclass", "heart", "australian", "german.numer", "diabetes_scale"]
+niters = [500] * len(datasets)
 use_loader = [False] * len(datasets)
 
-RUNS = 30
+RUNS = 100
 CPUS = -2
 
 for dataset, niter, loader in zip(datasets, niters, use_loader):
@@ -25,7 +24,7 @@ for dataset, niter, loader in zip(datasets, niters, use_loader):
 
     res = torch.stack(res)
     res = torch.transpose(res, 0, 1)
-    # torch.save(res, f"../results/real_data/{dataset}.pt")
+    torch.save(res, f"../results/real_data/{dataset}.pt")
 
 datasets = ["breast-cancer", "svmguide1", "splice", "fourclass", "heart"]
 metric_order = [-2, -1, 2, 3, 1, 0]
@@ -50,6 +49,3 @@ for dataset in datasets:
         line += " & ".join(line_comp) + " \\\\"
         print(line)
     print()
-
-res[0]
-
