@@ -61,6 +61,41 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
 
 
 
+def eval_convergence(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
+        n_iter=200, n_inducing=50, thresh=1e-6, lr=0.05, verbose=False, use_loader=False, batches=20):
+        
+    torch.manual_seed(seed)
+    print(f"Run: {seed}")
+        
+    f0 = LogisticGPVI(train_y, train_x, n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, verbose=verbose, 
+                            use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
+    f0.fit()
+
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
+    f1.fit()
+
+    f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
+    f2.fit()
+
+    # the losses are not the same length - so we will
+    # pad them with None values
+    l0 = f0.loss
+    l1 = f1.loss
+    l2 = f2.loss
+
+    max_len = n_iter
+    l0 = l0 + [-100] * (max_len - len(l0))
+    l1 = l1 + [-100] * (max_len - len(l1))
+    l2 = l2 + [-100] * (max_len - len(l2))
+
+    return torch.tensor([
+        l0, l1, l2
+    ])
+
+
+
 def evaluate_method_simulation(func, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f):
     pred_y = func.predict(test_x)
 
@@ -100,15 +135,18 @@ CPUS = -1
 RUNS = 100
 n = 50
 
+
 def run_exp(seed):
     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
     return analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-     n_iter=1000, n_inducing=50)
+     n_iter=1200, n_inducing=50)
+
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
 res = torch.transpose(res, 0, 1)
 torch.save(res, "../results/gp.pt")
+
 
 # elbo train, elbo test, auc train, auc test, mse, ci width coverage, runtime
 metric_order = [-4, -3, 3, 4, 1, 2, -2, 0]
@@ -129,4 +167,17 @@ for j in [0, 1, 2]:
     print(line)
 print()
 
-# 
+
+
+def run_exp(seed):
+    train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
+    return eval_convergence(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
+     n_iter=1000, n_inducing=50)
+
+
+res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
+res = torch.stack(res)
+res = torch.transpose(res, 0, 1)
+torch.save(res, "../results/gp_convergence.pt")
+
+ 
