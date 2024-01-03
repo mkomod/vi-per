@@ -10,7 +10,7 @@ import tqdm
 from torcheval.metrics import BinaryAUROC
 from joblib import Parallel, delayed
 
-
+from _00_funcs import sf, seconds_to_hms
 from _97_gpytorch import LogisticGPVI, LogitLikelihoodMC, PGLikelihood, LogitLikelihood
 
 
@@ -97,71 +97,55 @@ def eval_convergence(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs,
 
 
 def evaluate_method_simulation(func, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f):
-    pred_y = func.predict(test_x)
-
     auc = BinaryAUROC()
-    auc.update(pred_y, test_y)
-    auc_test = auc.compute().item()
-
     pred_y_2 = func.predict(train_x)
     auc.update(pred_y_2, train_y)
     auc_train = auc.compute().item()
+    
+    auc = BinaryAUROC()
+    pred_y = func.predict(test_x)
+    auc.update(pred_y, test_y)
+    auc_test = auc.compute().item()
 
-    lower, upper = func.credible_intervals(test_x)
+    true_f = true_f.reshape(-1)
+    n = true_f.size()[0]
+    f_pred = func.model(xs).mean
+    lower, upper = func.credible_intervals(xs)
+
+    mse = ((true_f - f_pred) ** 2).mean().item()
+    coverage_f = torch.sum( (true_f > lower) & (true_f < upper) ) / n
     ci_width = (upper - lower).mean().item()
 
-    n = test_y.size()[0]
-    coverage_f = torch.sum( (test_f > lower) & (test_f < upper) ) / n
-
-    samp = func.model(test_x).sample(torch.Size([1000]))
-    p0 = torch.sigmoid(samp)
-
-    lower_p = torch.quantile(p0, 0.025, dim=0)
-    upper_p = torch.quantile(p0, 0.975, dim=0)
-    
-    coverage_p = torch.sum( (test_p > lower_p) & (test_p < upper_p) ) / n
-
-    f_pred = func.model(xs).mean
-    mse = ((true_f.reshape(-1) - f_pred) ** 2).mean().item()
-    
-    return func.runtime, mse, ci_width, \
+    return func.ELB0_MC().item(), func.ELB0_MC(test_x, test_y).item(), \
             auc_train, auc_test, \
-            func.neg_log_likelihood().item(), func.neg_log_likelihood(test_x, test_y).item(), \
-            func.log_marginal().item(),             func.log_marginal(test_x, test_y).item(), \
-            func.ELB0_MC().item(),                       func.ELB0_MC(test_x, test_y).item(), \
-            coverage_f.item(), coverage_p.item()
+            mse, ci_width, coverage_f.item(), \
+            func.runtime 
 
 CPUS = -1
 RUNS = 100
 n = 50
 
-
 def run_exp(seed):
     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
     return analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-     n_iter=1200, n_inducing=50)
-
+     n_iter=1500, n_inducing=50)
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
 res = torch.transpose(res, 0, 1)
 torch.save(res, "../results/gp.pt")
 
-
-# elbo train, elbo test, auc train, auc test, mse, ci width coverage, runtime
-metric_order = [-4, -3, 3, 4, 1, 2, -2, 0]
 rm = res.median(dim=1)[0]
 rl = res.quantile(0.025, dim=1)
 ru = res.quantile(0.975, dim=1)
+
 for j in [0, 1, 2]:
     line = ""
     line_comp = [] 
-    for i in metric_order:
-        if i != 0:
-            # line_comp.append(f"{sf(rm[j, i], 3)} ({sf(sd[j, i],  2)})")
+    for i in range(8):
+        if i != 7:
             line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
         else:
-            # line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(sd[j, i]))})")
             line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
     line += " & ".join(line_comp) + " \\\\"
     print(line)
@@ -169,11 +153,13 @@ print()
 
 
 
+# --------------------------------------------------
+#        Analyze the convergence
+# --------------------------------------------------
 def run_exp(seed):
     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
     return eval_convergence(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-     n_iter=1000, n_inducing=50)
-
+     n_iter=1500, n_inducing=50)
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)

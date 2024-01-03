@@ -125,7 +125,7 @@ ax[0].plot(ms, res0[0], color="tab:orange")
 ax[0].grid(alpha=0.2)
 ax[0].set_title("(a)  $\\tau = 2.0$", loc="left")
 ax[0].set_xlabel("$\\vartheta$")
-ax[0].legend(("Proposed bound", "Monte-Carlo Estimate", "Jaakkola and Jordan (1999)"))
+ax[0].legend(("Proposed bound", "Monte-Carlo Estimate", "Jaakkola and Jordan (2000)"))
 ax[0].set_ylabel('Estimate of $E_{X}[\log(1 + \exp(X))]$')
 
 ax[1].plot(ss, res1[1], color="tab:blue")

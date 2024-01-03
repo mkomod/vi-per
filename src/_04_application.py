@@ -7,8 +7,8 @@ from joblib import Parallel, delayed
 from _00_funcs import process_dataset, evaluate_method_application, analyze_dataset, sf, seconds_to_hms
 
 
-datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
-niters = [500] * len(datasets)
+datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "german.numer", "fourclass", "heart"]
+niters = [1500] * len(datasets)
 use_loader = [False] * len(datasets)
 
 RUNS = 100
@@ -26,16 +26,14 @@ for dataset, niter, loader in zip(datasets, niters, use_loader):
     torch.save(res, f"../results/real_data/{dataset}.pt")
 
 
-datasets = ["breast-cancer", "svmguide1", "splice", "fourclass", "heart"]
-metric_order = [-2, -1, 2, 3, 1, 0]
+datasets = ["breast-cancer", "svmguide1", "fourclass", "heart"]
+metric_order = [-2, 2, 3, 1, 0]
 
 
 for dataset in datasets:
     res = torch.load(f"../results/real_data/{dataset}.pt")
     print("\n" + dataset)
-    # rm = res.mean(dim=1)
     rm = res.median(dim=1)[0]
-    # sd = res.std(dim=1)
     rl = res.quantile(0.025, dim=1)
     ru = res.quantile(0.975, dim=1)
     for j in [0, 1, 2]:
