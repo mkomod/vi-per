@@ -110,10 +110,21 @@ def nb_2(m, s, l_max = 10.0):
     return res
 
 
-dat = generate_data(20000, 20, dgp=2, seed=99)
+dat = generate_data(200, 5, dgp=2, seed=99)
 f0 = LogisticVI(dat, method=0, intercept=False, verbose=True, l_max=12.0)
 f0.fit()
+
+f_pred = dat["X"] @ f0.sample(5000).t()
+f_pred.mean(1).shape
+
+f6 = LogisticMCMC(dat, intercept=False, n_iter=1000, burnin=500, verbose=True)
+f6.fit()
+
+f_pred = dat["X"] @ f6.B.t()
+f_pred.mean(1).shape
+
 evaluate_method(f0, dat)
+evaluate_method(f6, dat)
 
 
 m = torch.tensor(-1.0, dtype=torch.double, requires_grad=True)

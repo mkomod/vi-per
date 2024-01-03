@@ -33,7 +33,8 @@ def run_experiment(seed):
     f5 = LogisticVI(dat, method=5, intercept=False) 
     f6 = LogisticMCMC(dat, intercept=False, n_iter=30000, burnin=25000)
 
-    f0.fit(); f1.fit(); f2.fit(); f3.fit(); f4.fit(); f5.fit(); f6.fit()
+    f0.fit(); # f1.fit(); f2.fit(); f3.fit(); f4.fit(); f5.fit(); 
+    f6.fit()
 
     return torch.tensor([evaluate_method(f0, dat),
                          evaluate_method(f1, dat),
