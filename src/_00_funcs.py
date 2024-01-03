@@ -42,7 +42,7 @@ def evaluate_method(fit, dat, method="vi"):
         B = fit.sample(5000)
     else:
         elbo_mc = 0.0
-        B = fit.B
+        B = fit.B.t()
 
     f_pred = dat["X"] @ B.t()
     f_mean = torch.mean(f_pred, dim=1)

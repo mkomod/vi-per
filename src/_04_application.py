@@ -26,7 +26,7 @@ for dataset, niter, loader in zip(datasets, niters, use_loader):
     torch.save(res, f"../results/real_data/{dataset}.pt")
 
 
-datasets = ["breast-cancer", "svmguide1", "fourclass", "heart"]
+datasets = ["breast-cancer", "svmguide1", "fourclass", "heart", "phishing"]
 metric_order = [-2, 2, 3, 1, 0]
 
 
