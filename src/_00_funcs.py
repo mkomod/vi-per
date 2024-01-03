@@ -35,19 +35,21 @@ def evaluate_method(fit, dat, method="vi"):
 
     cred_size = torch.mean(torch.diff(creds))
 
-    f_true = dat["X"] @ dat["b"]
 
     if method == "vi":
         elbo_mc = fit._ELBO_MC().item()
         B = fit.sample(5000)
     else:
         elbo_mc = 0.0
-        B = fit.B.t()
+        B = fit.B
 
+    f_true = dat["X"] @ dat["b"].t()
     f_pred = dat["X"] @ B.t()
-    f_mean = torch.mean(f_pred, dim=1)
-    lower, upper = torch.quantile(f_pred, 0.025, dim=1), torch.quantile(f_pred, 0.975, dim=1)
-    f_mse = torch.mean((f_pred - f_true)**2)
+    
+    f_mean = f_pred.mean(1)
+    lower, upper = f_pred.quantile(0.025, dim=1), f_pred.quantile(0.975, dim=1)
+
+    f_mse = torch.mean((f_mean - f_true)**2)
     f_cov = torch.sum(torch.logical_and(lower < f_true, f_true < upper)) / f_true.size()[0]
     f_cred_size = torch.mean(torch.diff(torch.cat([lower.unsqueeze(1), upper.unsqueeze(1)], dim=1), dim=1))
 
