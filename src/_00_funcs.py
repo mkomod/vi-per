@@ -44,7 +44,7 @@ def evaluate_method(fit, dat, method="vi"):
         elbo_mc = 0.0
         B = fit.B
 
-    f_pred = dat["X"] @ B
+    f_pred = dat["X"] @ B.t()
     f_mean = torch.mean(f_pred, dim=1)
     lower, upper = torch.quantile(f_pred, 0.025, dim=1), torch.quantile(f_pred, 0.975, dim=1)
     f_mse = torch.mean((f_pred - f_true)**2)
