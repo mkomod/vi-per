@@ -26,8 +26,10 @@ dat = {"X": X_train, "y": y_train}
 
 
 # fit the model
-f0 = LogisticVI(dat, method=0, n_iter=300, verbose=True, intercept=True)
-
+f0 = LogisticVI(dat, method=0, n_iter=1000, verbose=True, intercept=True)
+f0.fit()
 f1 = LogisticVI(dat, method=1, n_iter=1000, verbose=True, intercept=True)
 f1.fit()
+f4 = LogisticVI(dat, method=4, n_iter=1000, verbose=True, intercept=True)
+f4.fit()
 
