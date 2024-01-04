@@ -599,7 +599,7 @@ class LogisticVI:
 
     def sample(self, n_samples=10000):
         if self.method == 0 or self.method == 2 or self.method == 4:
-            mvn = dist.MultivariateNormal(self.m, torch.diag(self.s))
+            mvn = dist.MultivariateNormal(self.m, torch.diag(self.s**2))
         if self.method == 1 or self.method == 3 or self.method == 5:
             mvn = dist.MultivariateNormal(self.m, self.S)
 
