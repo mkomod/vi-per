@@ -531,7 +531,8 @@ class LogisticVI:
             a_t = (torch.sigmoid(self.t) - 0.5) / self.t
             C = self.X.t() @ torch.diag(a_t) @ self.X
             self.m = torch.inverse(C + torch.diag(1/self.sig**2)) @ (self.mu / self.sig**2 + V)
-            self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + C)))
+            # self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + C)))
+            self.s = 1 / torch.sqrt(torch.diag(C) + 1 / self.sig**2)
 
             S = torch.diag(self.s**2)  + torch.outer(self.m, self.m)
             try:
