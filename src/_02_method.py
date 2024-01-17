@@ -529,7 +529,9 @@ class LogisticVI:
 
         for epoch in range(self.n_iter):
             a_t = (torch.sigmoid(self.t) - 0.5) / self.t
-            C = self.X.t() @ torch.diag(a_t) @ self.X
+            # C = self.X.t() @ torch.diag(a_t) @ self.X 
+            C = (self.X.t() * a_t) @ self.X
+
             self.m = torch.inverse(C + torch.diag(1/self.sig**2)) @ (self.mu / self.sig**2 + V)
             # self.s = torch.sqrt(torch.diag(torch.inverse(torch.diag(1/self.sig**2) + C)))
             self.s = 1 / torch.sqrt(torch.diag(C) + 1 / self.sig**2)
@@ -563,7 +565,8 @@ class LogisticVI:
 
         for epoch in range(self.n_iter):
             a_t = (torch.sigmoid(self.t) - 0.5) / self.t
-            C = self.X.t() @ torch.diag(a_t) @ self.X
+            # C = self.X.t() @ torch.diag(a_t) @ self.X
+            C = (self.X.t() * a_t) @ self.X
             
             self.m = self.S @ (torch.inverse(self.Sig) @ self.mu + V)
             self.S = torch.inverse(torch.inverse(self.Sig) + C)

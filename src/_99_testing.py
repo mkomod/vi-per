@@ -74,6 +74,16 @@ f1 = LogisticVI(dat, method=1, intercept=False, verbose=True, n_iter=1500)
 f1.fit()
 f1.runtime
 
+f2 = LogisticVI(dat, method=2, intercept=False, verbose=True, n_iter=1500)
+f2.fit()
+f2.runtime
+
+f3 = LogisticVI(dat, method=3, intercept=False, verbose=True, n_iter=1500)
+f3.fit()
+f3.runtime
+
+
+
 f6 = LogisticMCMC(dat, intercept=False, n_iter=1000, burnin=500, verbose=True)
 f6.fit()
 
@@ -111,9 +121,18 @@ def nb_2(m, s, l_max = 10.0):
 
 
 dat = generate_data(200, 5, dgp=2, seed=99)
-f0 = LogisticVI(dat, method=1, intercept=False, verbose=True, l_max=12.0)
+f0 = LogisticVI(dat, method=0, intercept=False, verbose=True, l_max=12.0)
 f0.fit()
 evaluate_method(f0, dat)
+
+f2 = LogisticVI(dat, method=2, intercept=False, verbose=True, l_max=12.0)
+f2.fit()
+evaluate_method(f2, dat)
+
+f4 = LogisticVI(dat, method=4, intercept=False, verbose=True, l_max=12.0)
+f4.fit()
+evaluate_method(f4, dat)
+
 
 f_pred = dat["X"] @ f0.sample(5000).t()
 f_pred.mean(1).shape
