@@ -138,35 +138,33 @@ res = torch.stack(res)
 res = torch.transpose(res, 0, 1)
 torch.save(res, "../results/gp.pt")
 
-rm = res.median(dim=1)[0]
-rl = res.quantile(0.025, dim=1)
-ru = res.quantile(0.975, dim=1)
-
-for j in [0, 1, 2]:
-    line = ""
-    line_comp = [] 
-    for i in range(8):
-        if i != 7:
-            line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
-        else:
-            line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
-    line += " & ".join(line_comp) + " \\\\"
-    print(line)
-print()
-
+# rm = res.median(dim=1)[0]
+# rl = res.quantile(0.025, dim=1)
+# ru = res.quantile(0.975, dim=1)
+# 
+# for j in [0, 1, 2]:
+#     line = ""
+#     line_comp = [] 
+#     for i in range(8):
+#         if i != 7:
+#             line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
+#         else:
+#             line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
+#     line += " & ".join(line_comp) + " \\\\"
+#     print(line)
+# print()
 
 
 # --------------------------------------------------
 #        Analyze the convergence
 # --------------------------------------------------
-def run_exp(seed):
-    train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
-    return eval_convergence(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-     n_iter=1500, n_inducing=50)
-
-res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
-res = torch.stack(res)
-res = torch.transpose(res, 0, 1)
-torch.save(res, "../results/gp_convergence.pt")
-
- 
+# def run_exp(seed):
+#     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
+#     return eval_convergence(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
+#      n_iter=1500, n_inducing=50)
+# 
+# res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
+# res = torch.stack(res)
+# res = torch.transpose(res, 0, 1)
+# torch.save(res, "../results/gp_convergence.pt")
+#  
