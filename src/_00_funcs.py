@@ -130,11 +130,14 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
     f2.fit()
 
-    kl_0 = torch.distributions.kl.kl_divergence(f0.model(X), f1.model(X)).item()
-    kl_2 = torch.distributions.kl.kl_divergence(f2.model(X), f1.model(X)).item()
+    try:
+        kl_0 = torch.distributions.kl.kl_divergence(f0.model(X), f1.model(X)).item()
+        kl_2 = torch.distributions.kl.kl_divergence(f2.model(X), f1.model(X)).item()
 
-    kl_0_test = torch.distributions.kl.kl_divergence(f0.model(X_test), f1.model(X_test)).item()
-    kl_2_test = torch.distributions.kl.kl_divergence(f2.model(X_test), f1.model(X_test)).item()
+        kl_0_test = torch.distributions.kl.kl_divergence(f0.model(X_test), f1.model(X_test)).item()
+        kl_2_test = torch.distributions.kl.kl_divergence(f2.model(X_test), f1.model(X_test)).item()
+    except:
+        kl_0, kl_2, kl_0_test, kl_2_test = -1.0, -1.0, -1.0, -1.0
 
     return torch.tensor([
         evaluate_method_application(f0, X, y, X_test, y_test) + [kl_0, kl_0_test], 
