@@ -45,8 +45,8 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
 
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(5000), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.01)
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
     f1.fit()
 
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
@@ -141,22 +141,22 @@ res = torch.transpose(res, 0, 1)
 torch.save(res, "../results/gp.pt")
 
 
-res = torch.load("../results/gp.pt")
-rm = res.median(dim=1)[0]
-rl = res.quantile(0.025, dim=1)
-ru = res.quantile(0.975, dim=1)
-
-for j in [0, 1, 2]:
-    line = ""
-    line_comp = [] 
-    for i in range(9):
-        if i != 7:
-            line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
-        else:
-            line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
-    line += " & ".join(line_comp) + " \\\\"
-    print(line)
-print()
+# res = torch.load("../results/gp.pt")
+# rm = res.median(dim=1)[0]
+# rl = res.quantile(0.025, dim=1)
+# ru = res.quantile(0.975, dim=1)
+# 
+# for j in [0, 1, 2]:
+#     line = ""
+#     line_comp = [] 
+#     for i in range(9):
+#         if i != 7:
+#             line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
+#         else:
+#             line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
+#     line += " & ".join(line_comp) + " \\\\"
+#     print(line)
+# print()
 
 
 # --------------------------------------------------
