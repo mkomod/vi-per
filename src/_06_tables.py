@@ -29,10 +29,7 @@ for p in range(2, 3):
 
 
 
-# print the results for the real datasets
-# datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "german.numer", "fourclass", "heart"]
 datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "fourclass", "heart"]
-# datasets = ["breast-cancer", "svmguide1", "splice", "fourclass", "heart"]
 
 # elbo train, elbo test, auc trian, auc test, coverage, time
 metric_order = [-2, 2, 3, 1, 0]
