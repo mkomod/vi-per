@@ -127,17 +127,19 @@ def evaluate_method_simulation(func, train_x, train_y, test_x, test_y, test_p, t
 CPUS = -1
 RUNS = 100
 n = 50
+torch.manual_seed(1)
 
 def run_exp(seed):
     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
     return analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
-     n_iter=2000, n_inducing=50)
+     n_iter=1500, n_inducing=50)
 
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
 res = torch.transpose(res, 0, 1)
 torch.save(res, "../results/gp.pt")
+
 
 # res = torch.load("../results/gp.pt")
 # rm = res.median(dim=1)[0]
