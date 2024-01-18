@@ -1,0 +1,13 @@
+#PBS -lwalltime=08:00:00
+#PBS -lselect=1:ncpus=100:mem=528gb
+
+module load anaconda3/personal
+source activate env
+
+PROJ_DIR=$HOME/logistic_vb_src
+
+cd $PROJ_DIR/src
+
+export OMP_NUM_THREADS=100
+python _08_earthquake.py
+
