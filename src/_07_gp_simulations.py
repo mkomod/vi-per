@@ -45,16 +45,16 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
     f0.fit()
 
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(5000), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.02)
     f1.fit()
 
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
     f2.fit()
 
-    kl_0 = torch.distributions.kl.kl_divergence(f0.model(xs), f1.model(xs)).item()
-    kl_2 = torch.distributions.kl.kl_divergence(f2.model(xs), f1.model(xs)).item()
+    kl_0 = torch.distributions.kl.kl_divergence(f1.model(xs), f0.model(xs)).item()
+    kl_2 = torch.distributions.kl.kl_divergence(f1.model(xs), f2.model(xs)).item()
 
     return torch.tensor([
         evaluate_method_simulation(f0, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f) + [kl_0],
@@ -127,7 +127,7 @@ def evaluate_method_simulation(func, train_x, train_y, test_x, test_y, test_p, t
 CPUS = -1
 RUNS = 100
 n = 50
-torch.manual_seed(1)
+torch.manual_seed(123)
 
 def run_exp(seed):
     train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f = generate_data(n, seed=seed)
