@@ -29,10 +29,11 @@ for p in range(2, 3):
 
 
 
-datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "fourclass", "heart"]
+datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice"] # , "australian", "fourclass", "heart"]
+# datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "fourclass", "heart"]
 
 # elbo train, elbo test, auc trian, auc test, coverage, time
-metric_order = [-2, 2, 3, 1, 0]
+metric_order = [-4, 2, 3, 1, -1, -2, 0]
 
 for dataset in datasets:
     res = torch.load(f"../results/real_data/{dataset}.pt")
@@ -48,7 +49,7 @@ for dataset in datasets:
         for i in metric_order:
             if i == 0:
                 line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
-            elif i != -2:
+            elif i != -4:
                 line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  3)}, {sf(ru[j, i],  3)})")
             else:
                 line_comp.append(f"{sf(rm[j, i], 4)} ({sf(rl[j, i],  4)}, {sf(ru[j, i],  4)})")
@@ -59,7 +60,7 @@ for dataset in datasets:
 
 
 res = torch.load("../results/gp.pt")
-metric_order = [-4, -3, 3, 4, 1, 2, -2, 0]
+metric_order = [-5, -4, 3, 4, 1, 2, -3, -1, 0]
 rm = res.median(dim=1)[0]
 rl = res.quantile(0.025, dim=1)
 ru = res.quantile(0.975, dim=1)
