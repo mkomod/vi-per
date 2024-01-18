@@ -70,6 +70,11 @@ f0 = LogisticVI(dat, method=0, intercept=False, verbose=True)
 f0.fit()
 f0.runtime
 
+f0sgd = LogisticVI(dat, method=1, intercept=False, verbose=True, sgd=True, num_workers=1, batches=1, n_iter=61)
+f0sgd.fit()
+f0sgd.runtime
+
+
 f1 = LogisticVI(dat, method=1, intercept=False, verbose=True, n_iter=1500)
 f1.fit()
 f1.runtime

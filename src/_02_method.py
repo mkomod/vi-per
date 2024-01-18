@@ -286,6 +286,7 @@ class LogisticVI:
         mu=None, sig=None, Sig=None, m_init=None, s_init=None,
         n_iter=1200, thresh=1e-8, verbose=False, lr=0.08,
         l_max=12.0, adaptive_l=False, l_thresh=1e-2, 
+        sgd=False, num_workers=0, batches=100,
         n_samples=500, seed=1):
         """ 
         Initialize the class
@@ -312,6 +313,15 @@ class LogisticVI:
         self.l_thresh = l_thresh
         self.lr = lr
         self.y = dat["y"]
+        self.sgd = sgd
+
+        if self.sgd:
+            self.loader = torch.utils.data.DataLoader(
+                torch.utils.data.TensorDataset(self.X, self.y), 
+                batch_size=int(self.X.size()[0] / batches), 
+                shuffle=True, 
+                num_workers=num_workers
+            )
 
         if adaptive_l:
             self.l_terms = float(int(l_max / 2))
@@ -374,9 +384,14 @@ class LogisticVI:
         if self.method == 0:
             if self.verbose:
                 print("Fitting with proposed bound, diagonal covariance variational family")
-            
+
             self.XX = self.X ** 2
-            self._trainig_loop(optimizer)
+
+            if self.sgd:
+                self._training_loop_sgd(optimizer)
+            else:
+                self._trainig_loop(optimizer)
+
             self.s = torch.exp(self.u)
 
         elif self.method == 1:
@@ -389,7 +404,11 @@ class LogisticVI:
             self.u.requires_grad = True
 
             optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
-            self._trainig_loop(optimizer)
+
+            if self.sgd:
+                self._training_loop_sgd(optimizer)
+            else:
+                self._trainig_loop(optimizer)
 
             L = torch.zeros_like(self.Sig)
             L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
@@ -414,8 +433,12 @@ class LogisticVI:
         elif self.method == 4:
             if self.verbose:
                 print("Fitting with Monte Carlo, diagonal covariance variational family")
-            
-            self._trainig_loop(optimizer) 
+
+            if self.sgd:
+                self._training_loop_sgd(optimizer)
+            else: 
+                self._trainig_loop(optimizer) 
+
             self.s = torch.exp(self.u)
 
         elif self.method == 5:
@@ -428,7 +451,10 @@ class LogisticVI:
             self.u.requires_grad = True
             
             optimizer = torch.optim.Adam([self.m, self.u], lr=self.lr)
-            self._trainig_loop(optimizer)
+            if self.sgd:
+                self._training_loop_sgd(optimizer)
+            else:
+                self._trainig_loop(optimizer)
 
             L = torch.zeros_like(self.Sig)
             L[torch.tril_indices(self.p, self.p, 0).tolist()] = self.u
@@ -479,6 +505,36 @@ class LogisticVI:
                 print(epoch, l.item())
 
 
+    def _training_loop_sgd(self, optimizer):
+        """
+        Training loop
+        """
+        for epoch in range(self.n_iter):
+            for batch in self.loader:
+                optimizer.zero_grad()
+                l = self.ELBO_sgd(batch)
+                l.backward()
+                optimizer.step()
+
+            ll = self.ELBO()
+            self.loss.append(ll.item())
+
+            if torch.any(self.m.isnan()) or torch.any(self.u.isnan()):
+                break
+
+            if self.adaptive_l and (self.method == 0 or self.method == 1): 
+                if epoch > 2 and \
+                    self._loss_below_thresh(self.l_thresh) and \
+                    self.l_terms < self.l_max:
+                        self.l_terms += 1.0
+
+            if epoch > 2 and self._loss_below_thresh(self.thresh):
+                break
+
+            if epoch % 20 == 0 and self.verbose:
+                print(epoch, ll.item())
+
+
     def ELBO(self):
         if self.method == 0:
             return ELBO_TB(self.m, self.u, self.y, self.X, self.mu, self.sig, self.l_terms, XX=self.XX)
@@ -492,6 +548,19 @@ class LogisticVI:
             return ELBO_MC(self.m, self.u, self.y, self.X, self.mu, self.sig, self.n_samples)
         elif self.method == 5:
             return ELBO_MC_mvn(self.m, self.u, self.y, self.X, self.mu, self.Sig, self.n_samples)
+        else:
+            raise ValueError("Method not recognized")
+    
+    def ELBO_sgd(self, batch):
+        X, y = batch
+        if self.method == 0:
+            return ELBO_TB(self.m, self.u, y, X, self.mu, self.sig, self.l_terms, XX=X**2)
+        elif self.method == 1:
+            return ELBO_TB_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.l_terms)
+        elif self.method == 4:
+            return ELBO_MC(self.m, self.u, y, X, self.mu, self.sig, self.n_samples)
+        elif self.method == 5:
+            return ELBO_MC_mvn(self.m, self.u, y, X, self.mu, self.Sig, self.n_samples)
         else:
             raise ValueError("Method not recognized")
 

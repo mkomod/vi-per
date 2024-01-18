@@ -7,7 +7,7 @@ METHOD = ["TB-D", "TB-F", "JJ-D", "JJ-F", "MC-D", "MC-F", "MCMC"]
 metric_order = range(9)
 metric_order = [0, 1, 5, 6, 7, 8]
 
-for p in range(1, 2):
+for p in range(2, 3):
     for n in range(1, 3):
         for dgp in range(2, 3):
             print("\\multirow{7}{*}{" + f"{N[n]} / {P[p]}" + "}")
@@ -79,3 +79,8 @@ for j in [0, 1, 2]:
     line += " & ".join(line_comp) + " \\\\"
     print(line)
 print()
+
+
+res = torch.load("../results/gp_convergence.pt")
+
+(1500.0 - (res == -100).sum(dim=2)).mean(dim=1)

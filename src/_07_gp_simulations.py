@@ -53,10 +53,13 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f2.fit()
 
+    kl_0 = torch.distributions.kl.kl_divergence(f0.model(xs), f1.model(xs)).item()
+    kl_2 = torch.distributions.kl.kl_divergence(f2.model(xs), f1.model(xs)).item()
+
     return torch.tensor([
-        evaluate_method_simulation(f0, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f),
-        evaluate_method_simulation(f1, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f),
-        evaluate_method_simulation(f2, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f),
+        evaluate_method_simulation(f0, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f) + [kl_0],
+        evaluate_method_simulation(f1, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f) + [0.0],
+        evaluate_method_simulation(f2, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f) + [kl_2],
     ])
 
 
@@ -116,10 +119,10 @@ def evaluate_method_simulation(func, train_x, train_y, test_x, test_y, test_p, t
     coverage_f = torch.sum( (true_f > lower) & (true_f < upper) ) / n
     ci_width = (upper - lower).mean().item()
 
-    return func.ELB0_MC().item(), func.ELB0_MC(test_x, test_y).item(), \
+    return [func.ELB0_MC().item(), func.ELB0_MC(test_x, test_y).item(), \
             auc_train, auc_test, \
             mse, ci_width, coverage_f.item(), \
-            func.runtime 
+            func.runtime]
 
 CPUS = -1
 RUNS = 100
