@@ -130,10 +130,16 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.07)
     f2.fit()
 
+    kl_0 = torch.distributions.kl.kl_divergence(f0.model(X), f1.model(X)).item()
+    kl_2 = torch.distributions.kl.kl_divergence(f2.model(X), f1.model(X)).item()
+
+    kl_0_test = torch.distributions.kl.kl_divergence(f0.model(X_test), f1.model(X_test)).item()
+    kl_2_test = torch.distributions.kl.kl_divergence(f2.model(X_test), f1.model(X_test)).item()
+
     return torch.tensor([
-        evaluate_method_application(f0, X, y, X_test, y_test), 
-        evaluate_method_application(f1, X, y, X_test, y_test),
-        evaluate_method_application(f2, X, y, X_test, y_test)
+        evaluate_method_application(f0, X, y, X_test, y_test) + [kl_0, kl_0_test], 
+        evaluate_method_application(f1, X, y, X_test, y_test) + [0.0, 0.0],
+        evaluate_method_application(f2, X, y, X_test, y_test) + [kl_2, kl_2_test]
     ])
 
 
@@ -152,11 +158,11 @@ def evaluate_method_application(func, X_train, y_train, X_test, y_test):
     lower, upper = func.credible_intervals(X_test)
     ci_width = (upper - lower).mean().item()
 
-    return func.runtime, ci_width, \
+    return [func.runtime, ci_width, \
             auc_test, auc_train, \
             func.neg_log_likelihood().item(), func.neg_log_likelihood(X_test, y_test), \
             func.log_marginal().item(), func.log_marginal(X_test, y_test).item(), \
-            func.ELB0_MC().item(), func.ELB0_MC(X_test, y_test).item()
+            func.ELB0_MC().item(), func.ELB0_MC(X_test, y_test).item()]
 
 
 def print_results(res):
