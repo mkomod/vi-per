@@ -209,3 +209,27 @@ plt.show()
 SS.mean()
 MM.mean()
 
+
+torch.manual_seed(1)
+p = 50
+U = torch.rand(p, p, dtype=torch.double)
+S = U @ U.t()
+m = torch.rand(p, dtype=torch.double)
+
+U = torch.rand(p, p, dtype=torch.double )
+Sig = U @ U.t()
+mu = torch.rand(p, dtype=torch.double)
+
+m = torch.tensor(m, dtype=torch.float32)
+S = torch.tensor(S, dtype=torch.float32)
+Sig = torch.tensor(Sig, dtype=torch.float32)
+mu = torch.tensor(mu, dtype=torch.float32)
+
+print(torch.distributions.kl.kl_divergence(dist.MultivariateNormal(m, S), dist.MultivariateNormal(mu, Sig)))
+
+KL_mvn(m, S, mu, Sig)
+
+kl = 0.5 * (torch.logdet(Sig) - torch.logdet(S) - 10 + \
+    torch.trace( torch.inverse(Sig) @ S) + \
+    (mu - m) @ torch.inverse(Sig) @ (mu - m).t())
+kl

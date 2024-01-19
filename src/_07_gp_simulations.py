@@ -11,6 +11,7 @@ from torcheval.metrics import BinaryAUROC
 from joblib import Parallel, delayed
 
 from _00_funcs import sf, seconds_to_hms
+from _02_method import KL_mvn
 from _97_gpytorch import LogisticGPVI, LogitLikelihoodMC, PGLikelihood, LogitLikelihood
 
 
@@ -53,8 +54,15 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f2.fit()
 
-    kl_0 = torch.distributions.kl.kl_divergence(f1.model(xs), f0.model(xs)).item()
-    kl_2 = torch.distributions.kl.kl_divergence(f1.model(xs), f2.model(xs)).item()
+    # kl_0 = torch.distributions.kl.kl_divergence(f1.model(xs), f0.model(xs)).item()
+    # kl_2 = torch.distributions.kl.kl_divergence(f1.model(xs), f2.model(xs)).item()
+    
+    m0, S0 = f0.model(xs).mean, f0.model(xs).covariance_matrix
+    m1, S1 = f1.model(xs).mean, f1.model(xs).covariance_matrix
+    m2, S2 = f2.model(xs).mean, f2.model(xs).covariance_matrix
+
+    kl_0 = KL_mvn(m1, S1, m0, S0)
+    kl_2 = KL_mvn(m1, S1, m2, S2)
 
     return torch.tensor([
         evaluate_method_simulation(f0, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f) + [kl_0],

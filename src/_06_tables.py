@@ -29,18 +29,18 @@ for p in range(2, 3):
 
 
 
-datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice"] # , "australian", "fourclass", "heart"]
+# datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian"] # , "fourclass", "heart"]
 # datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "fourclass", "heart"]
+datasets = ["breast-cancer", "svmguide1", "australian", "fourclass", "heart"]
 
 # elbo train, elbo test, auc trian, auc test, coverage, time
-metric_order = [-4, 2, 3, 1, -1, -2, 0]
+# metric_order = [-4, 2, 3, 1, -1, -2, 0]
+metric_order = [-4, -2, -1, 1, 2, 3, 0]
 
 for dataset in datasets:
     res = torch.load(f"../results/real_data/{dataset}.pt")
     print("\n" + dataset)
-    # rm = res.mean(dim=1)
     rm = res.median(dim=1)[0]
-    # sd = res.std(dim=1)
     rl = res.quantile(0.025, dim=1)
     ru = res.quantile(0.975, dim=1)
     for j in [0, 1, 2]:
@@ -60,20 +60,18 @@ for dataset in datasets:
 
 
 res = torch.load("../results/gp.pt")
-metric_order = [-5, -4, 3, 4, 1, 2, -3, -1, 0]
+metric_order = range(9)
 rm = res.median(dim=1)[0]
-rl = res.quantile(0.025, dim=1)
-ru = res.quantile(0.975, dim=1)
+rl = res.quantile(0.10, dim=1)
+ru = res.quantile(0.90, dim=1)
 for j in [0, 1, 2]:
     line = ""
     line_comp = [] 
     for i in metric_order:
-        if i != 0:
-            # line_comp.append(f"{sf(rm[j, i], 3)} ({sf(sd[j, i],  2)})")
-            line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
-        else:
-            # line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(sd[j, i]))})")
+        if i == 7:
             line_comp.append(f"{seconds_to_hms(float(rm[j, i]))} ({seconds_to_hms(float(rl[j, i]))}, {seconds_to_hms(float(ru[j, i]))})")
+        else:
+            line_comp.append(f"{sf(rm[j, i], 3)} ({sf(rl[j, i],  2)}, {sf(ru[j, i],  2)})")
     line += " & ".join(line_comp) + " \\\\"
     print(line)
 print()
