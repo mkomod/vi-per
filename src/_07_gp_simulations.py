@@ -42,8 +42,8 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
     torch.manual_seed(seed)
     print(f"Run: {seed}")
         
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(30000), n_inducing=n_inducing, n_iter=n_iter*3, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.03)
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter*3, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.01)
     f1.fit()
 
     f0 = LogisticGPVI(train_y, train_x, n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, verbose=verbose, 
