@@ -42,10 +42,6 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
     torch.manual_seed(seed)
     print(f"Run: {seed}")
         
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter*3, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.01)
-    f1.fit()
-
     f0 = LogisticGPVI(train_y, train_x, n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, verbose=verbose, 
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
@@ -53,6 +49,10 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f2.fit()
+
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
+    f1.fit()
 
     mvn0 = f0.model(xs).to_data_independent_dist()
     mvn1 = f1.model(xs).to_data_independent_dist()

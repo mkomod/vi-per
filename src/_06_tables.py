@@ -31,7 +31,7 @@ for p in range(2, 3):
 
 datasets = ["breast-cancer", "svmguide1", "australian", "fourclass", "heart"]
 # elbo, kl, kl, ci width, auc, auc, runtime
-metric_order = [-4, -2, -1, 1, 2, 3, 0]
+metric_order = [-4, -2, -1, 1, 2, 0]
 
 for dataset in datasets:
     res = torch.load(f"../results/real_data/{dataset}.pt")
