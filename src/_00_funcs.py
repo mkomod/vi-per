@@ -53,10 +53,10 @@ def evaluate_method(fit, dat, method="vi"):
     f_cov = torch.sum(torch.logical_and(lower < f_true, f_true < upper)) / f_true.size()[0]
     f_cred_size = torch.mean(torch.diff(torch.cat([lower.unsqueeze(1), upper.unsqueeze(1)], dim=1), dim=1))
 
-    return elbo_mc, auc.compute().item(), \
+    return [elbo_mc, auc.compute().item(), \
         mse.compute().item(), cov, cred_size, \
         f_mse.item(), f_cov.item(), f_cred_size.item(), \
-        fit.runtime
+        fit.runtime]
 
 
 def process_dataset(dataset_name, standardize=True):
