@@ -131,12 +131,12 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
     f2.fit()
 
     try:
-        kl_0 = torch.distributions.kl.kl_divergence(f1.model(X), f0.model(X)).item()
-        kl_2 = torch.distributions.kl.kl_divergence(f1.model(X), f2.model(X)).item()
+        # kl_0 = torch.distributions.kl.kl_divergence(f1.model(X), f0.model(X)).item()
+        # kl_2 = torch.distributions.kl.kl_divergence(f1.model(X), f2.model(X)).item()
 
-        kl_0_test = torch.distributions.kl.kl_divergence(f1.model(X_test), f0.model(X_test)).item()
-        kl_2_test = torch.distributions.kl.kl_divergence(f1.model(X_test), f2.model(X_test)).item()
-        
+        # kl_0_test = torch.distributions.kl.kl_divergence(f1.model(X_test), f0.model(X_test)).item()
+        # kl_2_test = torch.distributions.kl.kl_divergence(f1.model(X_test), f2.model(X_test)).item()
+        # 
         # m0, S0 = f0.model(X).mean, f0.model(X).covariance_matrix
         # m1, S1 = f1.model(X).mean, f1.model(X).covariance_matrix
         # m2, S2 = f2.model(X).mean, f2.model(X).covariance_matrix
@@ -150,6 +150,19 @@ def analyze_dataset(seed, y, X, y_test, X_test, n_iter=200, n_inducing=50, thres
 
         # kl_0_test = KL_mvn(m1, S1, m0, S0)
         # kl_2_test = KL_mvn(m1, S1, m2, S2)
+        mvn0 = f0.model(X).to_data_independent_dist()
+        mvn1 = f1.model(X).to_data_independent_dist()
+        mvn2 = f2.model(X).to_data_independent_dist()
+
+        kl_0 = torch.sum(torch.distributions.kl.kl_divergence(mvn1, mvn0)).item()
+        kl_2 = torch.sum(torch.distributions.kl.kl_divergence(mvn1, mvn2)).item()
+
+        mvn0 = f0.model(X_test).to_data_independent_dist()
+        mvn1 = f1.model(X_test).to_data_independent_dist()
+        mvn2 = f2.model(X_test).to_data_independent_dist()
+
+        kl_0_test = torch.sum(torch.distributions.kl.kl_divergence(mvn1, mvn0)).item()
+        kl_2_test = torch.sum(torch.distributions.kl.kl_divergence(mvn1, mvn2)).item()
     except:
         kl_0, kl_2, kl_0_test, kl_2_test = -1.0, -1.0, -1.0, -1.0
 

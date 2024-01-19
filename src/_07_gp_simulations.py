@@ -46,23 +46,20 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
 
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter*5, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.005)
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(20000), n_inducing=n_inducing, n_iter=n_iter*2, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.01)
     f1.fit()
 
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f2.fit()
 
-    # kl_0 = torch.distributions.kl.kl_divergence(f1.model(xs), f0.model(xs)).item()
-    # kl_2 = torch.distributions.kl.kl_divergence(f1.model(xs), f2.model(xs)).item()
+    mvn0 = f0.model(xs).to_data_independent_dist()
+    mvn1 = f1.model(xs).to_data_independent_dist()
+    mvn2 = f2.model(xs).to_data_independent_dist()
 
-    m0, S0 = f0.model(xs).mean, f0.model(xs).covariance_matrix
-    m1, S1 = f1.model(xs).mean, f1.model(xs).covariance_matrix
-    m2, S2 = f2.model(xs).mean, f2.model(xs).covariance_matrix
-
-    kl_0 = KL_mvn(m1, S1, m0, S0)
-    kl_2 = KL_mvn(m1, S1, m2, S2)
+    kl_0 = torch.sum(torch.distributions.kl.kl_divergence(mvn1, mvn0)).item()
+    kl_2 = torch.sum(torch.distributions.kl.kl_divergence(mvn1, mvn2)).item()
 
     return torch.tensor([
         evaluate_method_simulation(f0, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f) + [kl_0],
