@@ -31,12 +31,12 @@ y_test =  torch.tensor(y[data.earthquake == quake].values, dtype=torch.double)
 
 dat = {"X": X_train, "y": y_train}
 
-f0 = LogisticVI(dat, method=0, n_iter=1500, verbose=True, intercept=True, lr=1e-3)
+f0 = LogisticVI(dat, method=0, n_iter=3000, verbose=True, intercept=True, lr=1e-3)
 f0.fit()
 f0.y, f0.X, f0.XX = None, None, None
 torch.save(f0, "../results/application/f0.pt")
 
-f1 = LogisticVI(dat, method=1, n_iter=1500, verbose=True, intercept=True, lr=1e-3)
+f1 = LogisticVI(dat, method=1, n_iter=3000, verbose=True, intercept=True, lr=1e-3)
 f1.fit()
 f1.y, f1.X = None, None
 torch.save(f1, "../results/application/f1.pt")
