@@ -31,12 +31,12 @@ y_test =  torch.tensor(y[data.earthquake == quake].values, dtype=torch.double)
 
 dat = {"X": X_train, "y": y_train}
 
-f0 = LogisticVI(dat, method=0, n_iter=1500, verbose=True, intercept=True, lr=1e-5)
+f0 = LogisticVI(dat, method=0, n_iter=1500, verbose=True, intercept=True, lr=1e-3)
 f0.fit()
 f0.y, f0.X, f0.XX = None, None, None
 torch.save(f0, "../results/application/f0.pt")
 
-f1 = LogisticVI(dat, method=1, n_iter=1500, verbose=True, intercept=True, lr=1e-5)
+f1 = LogisticVI(dat, method=1, n_iter=1500, verbose=True, intercept=True, lr=1e-3)
 f1.fit()
 f1.y, f1.X = None, None
 torch.save(f1, "../results/application/f1.pt")
@@ -51,26 +51,28 @@ torch.save(f1, "../results/application/f1.pt")
 # f3.y, f3.X = None, None
 # torch.save(f3, "../results/application/f3.pt")
 
+del dat, X, y
 
-# f0 = torch.load("../results/application/f0.pt")
-# f1 = torch.load("../results/application/f1.pt")
-# f2 = torch.load("../results/application/f2.pt")
-# f3 = torch.load("../results/application/f3.pt")
-# 
-# for f in [f0, f1, f2, f3]:
-#     auc = tm.BinaryAUROC()
-#     auc.update(f.predict(X_test), y_test)
-#     print(auc.compute().item())
-#     
-#     auc = tm.BinaryAUROC()
-#     auc.update(f.predict(X_train), y_train)
-#     print(auc.compute().item())
-# 
-#     f.X = torch.cat([torch.ones(X_train.size()[0], 1), X_train], dim=1)
-#     f.y = y_train
-#     f.XX = X_train**2
-# 
-#     print(f._ELBO_MC(50))
+f0 = torch.load("../results/application/f0.pt")
+f1 = torch.load("../results/application/f1.pt")
+f2 = torch.load("../results/application/f2.pt")
+f3 = torch.load("../results/application/f3.pt")
+
+for f in [f0, f1, f2, f3]:
+    auc = tm.BinaryAUROC()
+    auc.update(f.predict(X_test), y_test)
+    print(auc.compute().item())
+    
+    auc = tm.BinaryAUROC()
+    auc.update(f.predict(X_train), y_train)
+    print(auc.compute().item())
+
+    f.X = torch.cat([torch.ones(X_train.size()[0], 1), X_train], dim=1)
+    f.y = y_train
+    f.XX = X_train**2
+
+    print(f._ELBO_MC(50))
+
 # 
 # 
 # torch.round(f0.m, decimals=2)
