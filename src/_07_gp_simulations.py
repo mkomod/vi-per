@@ -46,8 +46,8 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
 
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f1.fit()
 
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
@@ -56,7 +56,7 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
 
     # kl_0 = torch.distributions.kl.kl_divergence(f1.model(xs), f0.model(xs)).item()
     # kl_2 = torch.distributions.kl.kl_divergence(f1.model(xs), f2.model(xs)).item()
-    
+
     m0, S0 = f0.model(xs).mean, f0.model(xs).covariance_matrix
     m1, S1 = f1.model(xs).mean, f1.model(xs).covariance_matrix
     m2, S2 = f2.model(xs).mean, f2.model(xs).covariance_matrix
