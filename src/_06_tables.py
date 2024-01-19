@@ -29,12 +29,8 @@ for p in range(2, 3):
 
 
 
-# datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian"] # , "fourclass", "heart"]
-# datasets = ["breast-cancer", "diabetes_scale", "svmguide1", "splice", "australian", "fourclass", "heart"]
 datasets = ["breast-cancer", "svmguide1", "australian", "fourclass", "heart"]
-
-# elbo train, elbo test, auc trian, auc test, coverage, time
-# metric_order = [-4, 2, 3, 1, -1, -2, 0]
+# elbo, kl, kl, ci width, auc, auc, runtime
 metric_order = [-4, -2, -1, 1, 2, 3, 0]
 
 for dataset in datasets:
