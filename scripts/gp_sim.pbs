@@ -1,5 +1,5 @@
 #PBS -lwalltime=01:00:00
-#PBS -lselect=1:ncpus=100:mem=528gb:cpu_type=ivy
+#PBS -lselect=1:ncpus=100:mem=528gb
 
 module load anaconda3/personal
 source activate env
