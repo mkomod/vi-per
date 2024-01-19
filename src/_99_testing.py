@@ -9,7 +9,7 @@ from importlib import reload
 from _01_data_generation import generate_data
 from _02_method import *
 from _00_funcs import *
-
+from _97_gpytorch import *
 
 
 torch.manual_seed(1)
@@ -233,3 +233,32 @@ kl = 0.5 * (torch.logdet(Sig) - torch.logdet(S) - 10 + \
     torch.trace( torch.inverse(Sig) @ S) + \
     (mu - m) @ torch.inverse(Sig) @ (mu - m).t())
 kl
+
+
+func = lambda x: - 4.5 * torch.sin(math.pi / 2 * x)
+# func = lambda x: torch.cos(x * math.pi / 2) * 2 + torch.cos(x)
+
+n = 50
+train_x = torch.cat((torch.linspace(0, 2.5, int(n / 2)), torch.linspace(3.5, 5, int(n / 2))))
+
+train_f = func(train_x) + torch.randn(train_x.shape[0]) * 1.0 
+train_x = train_x.reshape(-1, 1)
+train_p = torch.sigmoid(train_f)
+train_y = torch.bernoulli(train_p)
+# 
+test_x = torch.linspace(0, 5, 30)
+test_f = func(test_x) + torch.randn(test_x.shape[0]) * 1.0  
+test_p = torch.sigmoid((test_f))
+test_y = torch.bernoulli(test_p)
+
+xs = torch.linspace(0, 5, 100).reshape(-1, 1)
+true_f = func(xs)
+
+f0 = LogisticGPVI(train_y, train_x, n_inducing=50, n_iter=200, thresh=1e-6, verbose=True)
+f0.fit()
+
+f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(1000), n_inducing=50, n_iter=200, thresh=1e-6, verbose=True)
+f1.fit()
+
+f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=50, n_iter=200, thresh=1e-6, verbose=True)
+f2.fit()

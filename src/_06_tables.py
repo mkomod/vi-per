@@ -62,8 +62,8 @@ for dataset in datasets:
 res = torch.load("../results/gp.pt")
 metric_order = range(9)
 rm = res.median(dim=1)[0]
-rl = res.quantile(0.10, dim=1)
-ru = res.quantile(0.90, dim=1)
+rl = res.quantile(0.025, dim=1)
+ru = res.quantile(0.975, dim=1)
 for j in [0, 1, 2]:
     line = ""
     line_comp = [] 

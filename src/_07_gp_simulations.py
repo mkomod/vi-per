@@ -46,7 +46,7 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
 
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(10000), n_inducing=n_inducing, n_iter=n_iter*5, thresh=thresh,
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.01)
     f1.fit()
 
