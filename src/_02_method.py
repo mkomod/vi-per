@@ -135,7 +135,8 @@ def ELL_MC(m, s, y, X, n_samples=1000):
     :return: ELL
     """
     M = X @ m
-    S = torch.sqrt(X ** 2 @ s ** 2)
+    # S = torch.sqrt(X ** 2 @ s ** 2)
+    S = torch.sum(X ** 2 * s ** 2, dim=1)
 
     norm = dist.Normal(torch.zeros_like(M), torch.ones_like(S))
     samp = norm.sample((n_samples, ))

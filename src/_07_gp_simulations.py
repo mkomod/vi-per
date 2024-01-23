@@ -46,13 +46,15 @@ def analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, x
                             use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f0.fit()
 
+    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
+                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.03)
+    f1.fit()
+
     f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh, 
                             verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.08)
     f2.fit()
 
-    f1 = LogisticGPVI(train_y, train_x, likelihood=LogitLikelihoodMC(), n_inducing=n_inducing, n_iter=n_iter, thresh=thresh,
-                            verbose=verbose, use_loader=use_loader, batches=batches, seed=seed, lr=0.05)
-    f1.fit()
+
 
     mvn0 = f0.model(xs).to_data_independent_dist()
     mvn1 = f1.model(xs).to_data_independent_dist()
@@ -138,12 +140,12 @@ def run_exp(seed):
     return analyze_simulation(seed, train_x, train_y, test_x, test_y, test_p, test_f, xs, true_f,
      n_iter=1500, n_inducing=50)
 
-# torch.set_num_interop_threads(1)
-# torch.set_num_threads(1)
 
 res = Parallel(n_jobs=CPUS)(delayed(run_exp)(i) for i in range(1, RUNS+1))
 res = torch.stack(res)
 res = torch.transpose(res, 0, 1)
+res.median(dim=1)
+
 torch.save(res, "../results/gp.pt")
 
 
