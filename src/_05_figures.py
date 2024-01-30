@@ -153,3 +153,66 @@ ax[2].set_title("(c) Value of $l$ such that the relative error is below 1%", loc
 # plt.show()
 plt.savefig("/home/michael/proj/papers/logistic_vb/figures/error.pdf", bbox_inches="tight")
 
+
+torch.manual_seed(1)
+m = torch.linspace(-3, 3, 25)
+s = torch.linspace(0.1, 3.0, 30)
+m, s = torch.meshgrid(m, s)
+m = m.reshape(-1)
+s = s.reshape(-1)
+grid = torch.stack([m, s], dim=1)
+
+# plot the results
+fig, ax = plt.subplots(2, 2, figsize=(15*1.2, 3.5*3.6))
+ax = ax.reshape(-1)
+lets = ["(a) 0.5%", "(b) 1%", "(c) 2.5%", "(d) 5%"]
+
+
+for k, val in enumerate([0.005, 0.01, 0.025, 0.05]):
+# for k, val in enumerate([0.005]):
+    ls = []
+
+    # compute the number of terms needed to get the error below 0.01
+    for m, s in grid:
+        l = 1
+        res_true = mc_est(m, s, n_samples=2000000)
+        while True:
+            res = nb(m, s, l_max=l)
+            if torch.abs((res_true - res) / res) < val:
+                ls.append(l)
+                print(f"m={m}, s={s}, l={l}")
+                break
+            l += 1
+
+    # prepare results for plotting
+    ls = torch.tensor(ls)
+    ls = ls.reshape(25, 30)
+    ls = ls.rot90(1)
+    ls = ls.detach().numpy()
+
+    ax[k].matshow(ls, cmap='viridis', interpolation='none', aspect="auto", vmin=0, vmax=17)
+    for (i, j), z in np.ndenumerate(ls):
+        ax[k].text(j, i, '{:d}'.format(z), ha='center', va='center', color="black", fontsize=6)
+    ax[k].set_xticks([])
+    ax[k].set_yticks([])
+    # ax[k].gca().xaxis.tick_bottom()
+    # put xaxis ticks on bottom
+    ax[k].xaxis.set_ticks_position('bottom')
+    ax[k].set_xticks(np.arange(0, 25, 4))
+    ax[k].set_yticks(np.arange(0, 30, 5))
+    ax[k].set_yticklabels(np.arange(3.0, 0.0, -0.5))
+    ax[k].set_xticklabels(np.arange(-3, 4, 1))
+    ax[k].set_xlabel("$\\vartheta$")
+    ax[k].set_ylabel("$\\tau$")
+    ax[k].set_title(lets[k], loc="left")
+
+# add the colorbar
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+fig.colorbar(ax[0].images[0], cax=cbar_ax)
+
+# plt.show()
+# plt.show()
+
+plt.savefig("/home/michael/proj/papers/logistic_vb/figures/l_terms.pdf", bbox_inches="tight")
+

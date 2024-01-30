@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 
-from _02_method import LogisticVI
+from _00_funcs import sf, seconds_to_hms
+from _02_method import LogisticVI, KL_mvn, KL
 from _97_gpytorch import LogisticGPVI, LogitLikelihoodMC, PGLikelihood, LogitLikelihood
 
 from torcheval import metrics as tm
@@ -14,56 +15,52 @@ from joblib import Parallel, delayed
 # qsub -I -l select=1:ncpus=40:mem=80gb -l walltime=08:00:00 
 # export OMP_NUM_THREADS=40
 
-
 # load in the data
 data = pd.read_csv("../data/data_add_std_fillNaNs.csv")
 data.head()
 data.shape
 
 y = data.liq
-X = data[["PGV", "Vs30", "precip", "dw", "wtd"]]
 X = data[['lnPGV', 'lnVs30', 'lnprecip', 'lndw', 'lnwtd']]
 quake = "lomaprieta1989"
 
 X_train = torch.tensor(X[data.earthquake != quake].values, dtype=torch.double)
 y_train = torch.tensor(y[data.earthquake != quake].values, dtype=torch.double)
-
-# centre the dataset
 X_m = torch.mean(X_train, dim=0)
 X_train = (X_train - X_m) 
+dat = {"X": X_train, "y": y_train}
 
 X_test =  torch.tensor(X[data.earthquake == quake].values, dtype=torch.double)
 X_test = (X_test - X_m)
 y_test =  torch.tensor(y[data.earthquake == quake].values, dtype=torch.double)
-dat = {"X": X_train, "y": y_train}
 
 
-f0 = LogisticVI(dat, method=0, n_iter=1500, verbose=True, intercept=True, lr=0.05)
+f0 = LogisticVI(dat, method=0, n_iter=500, verbose=True, intercept=True, lr=0.2)
 f0.fit()
 f0.y, f0.X, f0.XX = None, None, None
-torch.save(f0, "../results/application/f0.pt")
+# torch.save(f0, "../results/application/f0.pt")
 
-f1 = LogisticVI(dat, method=1, n_iter=2000, verbose=True, intercept=True, lr=0.05)
+f1 = LogisticVI(dat, method=1, n_iter=500, verbose=True, intercept=True, lr=0.1)
 f1.fit()
 f1.y, f1.X = None, None
-torch.save(f1, "../results/application/f1.pt")
+# torch.save(f1, "../results/application/f1.pt")
 
-f2 = LogisticVI(dat, method=2, n_iter=1000, verbose=True, intercept=True)
+f2 = LogisticVI(dat, method=2, n_iter=500, verbose=True, intercept=True)
 f2.fit()
 f2.y, f2.X = None, None
-torch.save(f2, "../results/application/f2.pt")
+# torch.save(f2, "../results/application/f2.pt")
 
-f3 = LogisticVI(dat, method=3, n_iter=1000, verbose=True, intercept=True)
+f3 = LogisticVI(dat, method=3, n_iter=500, verbose=True, intercept=True)
 f3.fit()
 f3.y, f3.X = None, None
-torch.save(f3, "../results/application/f3.pt")
+# torch.save(f3, "../results/application/f3.pt")
 
-f4 = LogisticVI(dat, method=4, n_iter=300, verbose=True, intercept=True, lr=0.10, n_samples=200) 
+f4 = LogisticVI(dat, method=4, n_iter=500, verbose=True, intercept=True, lr=0.20, n_samples=500) 
 f4.fit()
 f4.y, f4.X, f4.XX = None, None, None
-torch.save(f4, "../results/application/f4.pt")
+# torch.save(f4, "../results/application/f4.pt")
 
-f5 = LogisticVI(dat, method=5, n_iter=150, verbose=True, intercept=True, lr=0.10, n_samples=200)
+f5 = LogisticVI(dat, method=5, n_iter=140, verbose=True, intercept=True, lr=0.1, n_samples=500)
 f5.fit()
 f5.y, f5.X = None, None
 torch.save(f5, "../results/application/f5.pt")
@@ -126,3 +123,7 @@ res = torch.tensor(res)
 for i in [0, 2, 4, 1, 3, 5]:
     print(f"{res[i, 0]:.2f} & {res[i, 1]:.4f} & {res[i, 2]:.4f} & {res[i, 3]:.4f} \\\\")
 
+KL(f4.m, f4.s, f0.m, f0.s)
+KL(f4.m, f4.s, f2.m, f2.s)
+KL_mvn(f5.m, f5.S, f1.m, f1.S)
+KL_mvn(f5.m, f5.S, f3.m, f3.S)

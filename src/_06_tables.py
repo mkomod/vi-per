@@ -7,9 +7,11 @@ METHOD = ["TB-D", "TB-F", "JJ-D", "JJ-F", "MC-D", "MC-F", "MCMC"]
 metric_order = range(9)
 metric_order = [0, 9, 5, 6, 7, 1, 8]
 
-for p in range(2, 3):
-    for n in range(1, 3):
-        for dgp in range(2, 3):
+for dgp in [0, 1, 2]:
+    print("\multicolumn{10}{c}{Setting {" + f"{dgp+1}" + "}}")
+    for n in range(0, 3):
+        for p in range(0, 3):
+        # for dgp in range(2, 3):
             print("\\multirow{7}{*}{" + f"{N[n]} / {P[p]}" + "}")
             res = torch.load(f"../results/res_{dgp}_{n}_{p}.pt")
             rm = res.median(dim=1)[0]
