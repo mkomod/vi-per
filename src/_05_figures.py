@@ -151,7 +151,7 @@ ax[2].set_ylabel("$\\tau$")
 ax[2].set_title("(c) Value of $l$ such that the relative error is below 1%", loc="left")
 
 # plt.show()
-plt.savefig("/home/michael/proj/papers/logistic_vb/figures/error.pdf", bbox_inches="tight")
+plt.savefig("../figures/error.pdf", bbox_inches="tight")
 
 
 
@@ -218,5 +218,5 @@ fig.colorbar(ax[0].images[0], cax=cbar_ax)
 # plt.show()
 # plt.show()
 
-plt.savefig("/home/michael/proj/papers/logistic_vb/figures/l_terms.pdf", bbox_inches="tight")
+plt.savefig("../figures/l_terms.pdf", bbox_inches="tight")
 
