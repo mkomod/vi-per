@@ -154,6 +154,10 @@ ax[2].set_title("(c) Value of $l$ such that the relative error is below 1%", loc
 plt.savefig("/home/michael/proj/papers/logistic_vb/figures/error.pdf", bbox_inches="tight")
 
 
+
+# ---------------------------
+#       Figure 4
+# ---------------------------
 torch.manual_seed(1)
 m = torch.linspace(-3, 3, 25)
 s = torch.linspace(0.1, 3.0, 30)
