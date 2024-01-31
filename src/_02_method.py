@@ -97,13 +97,13 @@ def ELL_TB_mvn(m, S, y, X, l_max = 10.0):
     :return: ELL
     """
     M = X @ m
-    # S = torch.diag(X @ S @ X.t()) # this is too slow!
-    
-    try: 
-        U = torch.linalg.cholesky(S)
-        S = torch.sum((X @ U) ** 2, dim=1)
-    except:
-        S = torch.sum(X * (S @ X.t()).t(), dim=1)
+    S = (X.unsqueeze(1) @ S @ X.unsqueeze(2)).squeeze()
+
+    # try: 
+    #     U = torch.linalg.cholesky(S)
+    #     S = torch.sum((X @ U) ** 2, dim=1)
+    # except:
+    #     S = torch.sum(X * (S @ X.t()).t(), dim=1)
     
     S = torch.sqrt(S)
 

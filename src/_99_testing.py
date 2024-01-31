@@ -262,3 +262,30 @@ f1.fit()
 
 f2 = LogisticGPVI(train_y, train_x, likelihood=PGLikelihood(), n_inducing=50, n_iter=200, thresh=1e-6, verbose=True)
 f2.fit()
+
+import time
+
+torch.manual_seed(1)
+p = 20
+U = torch.rand(p, p, dtype=torch.double)
+S = U @ U.t()
+
+
+dat = generate_data(20000, p, dgp=0, seed=9)
+X = dat["X"]
+
+s = time.time()
+for i in range(1000):
+    a = torch.sum(X * (S @ X.t()).t(), dim=1)
+    a = (X.unsqueeze(1) @ S @ X.unsqueeze(2)).squeeze()
+e = time.time()
+print(e - s)
+
+
+a = torch.sum(X * (S @ X.t()).t(), dim=1)
+aa = (X.unsqueeze(1) @ S @ X.unsqueeze(2)).squeeze()
+
+torch.allclose(a, aa)
+
+(XX @ S @ XX.transpose(1, 2)).squeeze()
+    
