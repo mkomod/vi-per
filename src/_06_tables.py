@@ -7,6 +7,7 @@ METHOD = ["TB-D", "TB-F", "JJ-D", "JJ-F", "MC-D", "MC-F", "MCMC"]
 metric_order = range(9)
 metric_order = [0, 9, 5, 6, 7, 1, 8]
 
+
 for dgp in [0, 1, 2]:
     print("\multicolumn{10}{c}{Setting {" + f"{dgp+1}" + "}}")
     for n in range(0, 3):

@@ -148,7 +148,7 @@ ax[2].set_yticklabels(np.arange(3.0, 0.0, -0.5))
 ax[2].set_xticklabels(np.arange(-3, 4, 1))
 ax[2].set_xlabel("$\\vartheta$")
 ax[2].set_ylabel("$\\tau$")
-ax[2].set_title("(c) Value of $l$ such that the relative error is below 1%", loc="left")
+ax[2].set_title("(c) Value of $l$ such that the relative error $<1\%$", loc="left")
 
 # plt.show()
 plt.savefig("../figures/error.pdf", bbox_inches="tight")
