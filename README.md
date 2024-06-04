@@ -1,3 +1,10 @@
+## About
+
+This repository implements the methods used in the paper "Logistic Variational Bayes Revisited" (2024)
+
+TLDR: We introduce SOTA methods for variational logistic regression and GP classification
+
+https://arxiv.org/abs/2406.00713
 
 ## Installing environment
 
