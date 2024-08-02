@@ -14,6 +14,63 @@ The following command will install the environment for the project.
 conda env create -f environment.yml
 ```
 
+
+## Quick start GP Classification
+
+If you want to do GP classfication see
+
+https://github.com/mkomod/vi-per/blob/main/notebooks/gp_simulations.ipynb
+
+```python
+from src._97_gpytorch import LogisticGPVI
+
+model = LogisticGPVI(y, X, n_inducing=50, n_iter=200, verbose=False)
+model.fit()
+
+y_pred = model.predict(X)
+```
+
+If you are familiar with Gpytorch the following class is an implementation of VI-PER.
+
+```python
+class LogitLikelihood(gpytorch.likelihoods._OneDimensionalLikelihood):
+    has_analytic_marginal = False
+
+    def __init__(self, l_max=12.0, ):
+        self.l_max = l_max
+        self.l = torch.arange(1.0, self.l_max*2, 1.0, requires_grad=False)
+        return super().__init__()
+ 
+    def forward(self, function_samples, *args, **kwargs):
+        """ defines the liklihood function """
+        output_probs = torch.sigmoid(function_samples)
+        return torch.distributions.Bernoulli(probs=output_probs)
+
+    @torch.jit.export
+    def expected_log_prob(self, y, function_dist, *args, **kwargs):
+        """ compute the expected log probability """
+        M = function_dist.mean.view(-1, 1)
+        S = function_dist.stddev.view(-1, 1)
+        V = S**2
+
+        M_S = M / S
+        ML = M * self.l
+        SL = S * self.l
+        VL = 0.5 * V * (self.l ** 2)
+        
+        y_M = torch.dot(y, M.squeeze())
+        normal_term = torch.sum(S / math.sqrt(2 * torch.pi) * torch.exp(-0.5 * M**2 / V) + M * ndtr(M_S))
+        series_term = torch.sum(
+            (-1.0)**(self.l - 1.0) / self.l * (
+                torch.exp(ML + VL + log_ndtr(-M_S - SL)) + torch.exp(-ML + VL + log_ndtr(M_S - SL))
+            )
+        )
+
+        return y_M - normal_term - series_term
+```
+
+
+
 ## Project structure
 
 The project is structured as follows:
